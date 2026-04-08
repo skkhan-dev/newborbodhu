@@ -1,0 +1,2 @@
+id	user_id	gateway	amount	discount_amount	final_amount	currency	status	txn_id	payment_date	membership_id
+930001	900001	paypal	49.00	0.00	49.00	USD	paid	PAYPAL-930001	1773900000	940001

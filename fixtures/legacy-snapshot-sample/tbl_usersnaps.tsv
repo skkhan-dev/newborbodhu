@@ -1,0 +1,3 @@
+id	user_id	image	privacy	is_primary	status	mime_type
+910001	900001	legacy/photos/ayesha-noor.jpg	public	1	approved	image/jpeg
+910002	900002	legacy/photos/imran-ahmed.jpg	private	1	approved	image/jpeg

@@ -1,0 +1,1004 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LocaleKey {
+  EN
+  BN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  RESET_REQUIRED
+  DELETED
+}
+
+enum RoleKey {
+  MEMBER
+  GHOTOK
+  VENDOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ProfileStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  INACTIVE
+  REJECTED
+  CANCELLED
+  DELETED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+}
+
+enum ProfileOwnerType {
+  SELF
+  FAMILY
+  GHOTOK
+  ADMIN
+}
+
+enum GenderKey {
+  MAN
+  WOMAN
+}
+
+enum MediaType {
+  PROFILE_PHOTO
+  BIODATA
+  DOCUMENT
+  VERIFICATION
+  VIDEO
+}
+
+enum MediaPrivacyMode {
+  PUBLIC
+  PRIVATE
+  BLURRED_PUBLIC
+}
+
+enum MediaApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PhotoRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+}
+
+enum InteractionType {
+  INTEREST
+  FAVORITE
+  BLOCK
+}
+
+enum InteractionStatus {
+  ACTIVE
+  WITHDRAWN
+  ACCEPTED
+  REJECTED
+}
+
+enum ConversationType {
+  MEMBER_TO_MEMBER
+  GHOTOK_ASSISTED
+  VENDOR_INQUIRY
+  SUPPORT
+}
+
+enum MessageType {
+  TEXT
+  SYSTEM
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentGateway {
+  AMARPAY
+  PAYPAL
+  OFFICE
+  MANUAL
+  CREDIT_ADJUSTMENT
+  BKASH
+  SSLCOMMERZ
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+  MANUAL_REVIEW
+  MANUAL_APPROVED
+  MANUAL_REJECTED
+}
+
+enum PaymentForType {
+  MEMBERSHIP
+  GHOTOK_CREDITS
+  VENDOR_BILLING
+  FEATURED_LISTING
+  OTHER
+}
+
+enum GhotokStatus {
+  PENDING_REVIEW
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum GhotokLinkStatus {
+  PENDING
+  ACTIVE
+  RELEASED
+}
+
+enum VendorStatus {
+  PENDING_REVIEW
+  ACTIVE
+  INACTIVE
+  REJECTED
+}
+
+enum LeadStatus {
+  NEW
+  OPEN
+  RESPONDED
+  BOOKED
+  CLOSED_REJECTED
+}
+
+enum WeddingProjectStatus {
+  DRAFT
+  ACTIVE
+  BOOKED
+  ARCHIVED
+}
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum MailCampaignStatus {
+  DRAFT
+  QUEUED
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum AnalyticsPlatform {
+  WEB
+  MOBILE
+  SERVER
+}
+
+enum MembershipCategory {
+  ONLINE
+  ASSISTED
+}
+
+model User {
+  id                           String                       @id @default(cuid())
+  legacyId                     Int?                         @unique
+  email                        String                       @unique
+  emailVerifiedAt              DateTime?
+  emailVerificationToken       String?   @unique
+  emailVerificationTokenExpiresAt DateTime?
+  emailVerificationCode        String?
+  emailVerificationExpiresAt   DateTime?
+  passwordHash                 String?
+  legacyHash                   String?
+  legacyHashType               String?
+  preferredLocale              LocaleKey                    @default(EN)
+  status                       UserStatus                   @default(PENDING)
+  createdAt                    DateTime                     @default(now())
+  updatedAt                    DateTime                     @updatedAt
+  lastLoginAt                  DateTime?
+  roles                        UserRole[]
+  memberProfile                MemberProfile?
+  ghotokProfile                GhotokProfile?
+  vendorProfile                VendorProfile?
+  adminProfile                 AdminUser?
+  uploadedMedia                ProfileMedia[]               @relation("UploadedMedia")
+  memberships                  Membership[]
+  payments                     Payment[]                    @relation("UserPayments")
+  couponRedemptions            CouponRedemption[]
+  sentMessages                 Message[]                    @relation("SentMessages")
+  conversationJoins            ConversationParticipant[]
+  deviceTokens                 UserDeviceToken[]
+  auditLogs                    AuditLog[]                   @relation("ActorAuditLogs")
+  approvedProfiles             MemberProfile[]              @relation("ApprovedProfiles")
+  decidedPhotoRequests         PhotoAccessRequest[]         @relation("PhotoRequestDecision")
+  createdCoupons               Coupon[]                     @relation("CouponCreator")
+  approvedPayments             Payment[]                    @relation("ApprovedPayments")
+  createdCreditEntries         GhotokCreditLedger[]         @relation("CreditEntryCreator")
+  submittedProfileRevisons     ProfileRevision[]            @relation("SubmittedProfileRevisions")
+  passwordResetTokens          PasswordResetToken[]
+  notifications                NotificationOutbox[]
+  startedImpersonationSessions GhotokImpersonationSession[] @relation("StartedImpersonationSessions")
+  updatedPlatformSettings      PlatformSetting[]            @relation("UpdatedPlatformSettings")
+  createdMailCampaigns         MailCampaign[]               @relation("MailCampaignCreator")
+  productEvents                ProductEvent[]
+}
+
+model UserRole {
+  id         String   @id @default(cuid())
+  userId     String
+  role       RoleKey
+  assignedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+}
+
+model MemberProfile {
+  id                       String                       @id @default(cuid())
+  legacyId                 Int?                         @unique
+  userId                   String                       @unique
+  displayId                String                       @unique @default(cuid())
+  status                   ProfileStatus                @default(DRAFT)
+  approvalStatus           ApprovalStatus               @default(PENDING)
+  profileOwnerType         ProfileOwnerType             @default(SELF)
+  managedByGhotokId        String?
+  createdByActorType       RoleKey?
+  createdByActorId         String?
+  firstName                String
+  lastName                 String?
+  displayName              String?
+  gender                   GenderKey
+  lookingFor               GenderKey?
+  birthDate                DateTime?
+  maritalStatus            String?
+  childrenStatus           String?
+  heightCm                 Int?
+  bodyType                 String?
+  complexion               String?
+  bloodGroup               String?
+  specialCaseNotes         String?
+  religion                 String?
+  religionSubgroup         String?
+  communityType            String?
+  motherTongue             String?
+  familyValues             String?
+  educationLevel           String?
+  educationMajor           String?
+  universityName           String?
+  profession               String?
+  designation              String?
+  annualIncomeBand         String?
+  diet                     String?
+  smoke                    String?
+  drink                    String?
+  currentCountryCode       String?
+  currentCity              String?
+  currentArea              String?
+  residenceStatus          String?
+  homeCountryCode          String?
+  homeDivision             String?
+  homeDistrict             String?
+  fatherStatus             String?
+  motherStatus             String?
+  brothersCount            Int?
+  sistersCount             Int?
+  familyDetails            String?
+  aboutMe                  String?
+  guardianName             String?
+  guardianRelation         String?
+  guardianPhone            String?
+  guardianEmail            String?
+  familyInvolvementLevel   String?
+  mahrPreference           String?
+  gotra                    String?
+  relocationPreference     String?
+  phone                    String?
+  isProfilePublic          Boolean                      @default(true)
+  indexingMode             String                       @default("PRIVACY_LIMITED")
+  contactVisibilityMode    String                       @default("PLAN_GATED")
+  profileCompletionPct     Int                          @default(0)
+  searchVector             Unsupported("tsvector")?
+  approvedAt               DateTime?
+  approvedByAdminId        String?
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  user                     User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  managedByGhotok          GhotokProfile?               @relation("GhotokManagedProfiles", fields: [managedByGhotokId], references: [id], onDelete: SetNull)
+  approvedByAdmin          User?                        @relation("ApprovedProfiles", fields: [approvedByAdminId], references: [id], onDelete: SetNull)
+  partnerPreference        PartnerPreference?
+  revisions                ProfileRevision[]
+  media                    ProfileMedia[]
+  photoRequestsOwned       PhotoAccessRequest[]         @relation("PhotoRequestOwner")
+  photoRequestsRequested   PhotoAccessRequest[]         @relation("PhotoRequestRequester")
+  sentInteractions         Interaction[]                @relation("ActorInteractions")
+  receivedInteractions     Interaction[]                @relation("TargetInteractions")
+  visitsSent               ProfileVisit[]               @relation("ViewerProfileVisits")
+  visitsReceived           ProfileVisit[]               @relation("ViewedProfileVisits")
+  searchSaves              SearchSave[]
+  contactUnlocksGiven      ContactUnlock[]              @relation("TargetContactUnlocks")
+  contactUnlocksReceived   ContactUnlock[]              @relation("ViewerContactUnlocks")
+  ghotokLinks              GhotokMemberLink[]
+  conversationParticipants ConversationParticipant[]
+  memberships              Membership[]
+  weddingProjects          WeddingProject[]
+  vendorLeads              VendorLead[]
+  sentMessages             Message[]                    @relation("SenderMemberMessages")
+  impersonationSessions    GhotokImpersonationSession[]
+
+  @@index([status, approvalStatus])
+  @@index([gender, lookingFor])
+  @@index([currentCountryCode, homeCountryCode])
+}
+
+model ProfileRevision {
+  id                String         @id @default(cuid())
+  memberProfileId   String
+  revisionNumber    Int
+  submittedPayload  Json
+  submittedByUserId String?
+  reviewStatus      ApprovalStatus @default(PENDING)
+  reviewNotes       String?
+  reviewedByAdminId String?
+  submittedAt       DateTime       @default(now())
+  reviewedAt        DateTime?
+  memberProfile     MemberProfile  @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  submittedByUser   User?          @relation("SubmittedProfileRevisions", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([memberProfileId, revisionNumber])
+}
+
+model PartnerPreference {
+  id                     String        @id @default(cuid())
+  legacyId               Int?          @unique
+  memberProfileId        String        @unique
+  gender                 GenderKey?
+  ageMin                 Int?
+  ageMax                 Int?
+  maritalStatuses        Json?
+  childrenPreferences    Json?
+  heightMinCm            Int?
+  heightMaxCm            Int?
+  religions              Json?
+  religionSubgroups      Json?
+  motherTongues          Json?
+  familyValues           Json?
+  educationLevels        Json?
+  educationMajors        Json?
+  professions            Json?
+  dietPreferences        Json?
+  smokePreferences       Json?
+  drinkPreferences       Json?
+  homeCountryCodes       Json?
+  livingCountryCodes     Json?
+  districts              Json?
+  residenceStatuses      Json?
+  relocationPreferences  Json?
+  familyInvolvementPrefs Json?
+  aboutPartner           String?
+  updatedAt              DateTime      @updatedAt
+  memberProfile          MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+}
+
+model ProfileMedia {
+  id               String              @id @default(cuid())
+  legacyId         BigInt?             @unique
+  memberProfileId  String
+  uploadedByUserId String?
+  mediaType        MediaType
+  storagePath      String
+  thumbnailPath    String?
+  mimeType         String?
+  privacyMode      MediaPrivacyMode    @default(PUBLIC)
+  isPrimary           Boolean             @default(false)
+  approvalStatus      MediaApprovalStatus @default(PENDING)
+  aiModerationResult  Json?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  memberProfile       MemberProfile       @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  uploadedByUser      User?               @relation("UploadedMedia", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([memberProfileId, mediaType])
+}
+
+model PhotoAccessRequest {
+  id                       String             @id @default(cuid())
+  legacyId                 Int?               @unique
+  ownerMemberProfileId     String
+  requesterMemberProfileId String
+  status                   PhotoRequestStatus @default(PENDING)
+  requestType              String             @default("PHOTO")
+  decisionByUserId         String?
+  decisionReason           String?
+  createdAt                DateTime           @default(now())
+  decidedAt                DateTime?
+  ownerMemberProfile       MemberProfile      @relation("PhotoRequestOwner", fields: [ownerMemberProfileId], references: [id], onDelete: Cascade)
+  requesterMemberProfile   MemberProfile      @relation("PhotoRequestRequester", fields: [requesterMemberProfileId], references: [id], onDelete: Cascade)
+  decisionByUser           User?              @relation("PhotoRequestDecision", fields: [decisionByUserId], references: [id], onDelete: SetNull)
+
+  @@index([ownerMemberProfileId, status])
+  @@index([requesterMemberProfileId, status])
+}
+
+model Interaction {
+  id                    String            @id @default(cuid())
+  actorMemberProfileId  String
+  targetMemberProfileId String
+  interactionType       InteractionType
+  status                InteractionStatus @default(ACTIVE)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  actorMemberProfile    MemberProfile     @relation("ActorInteractions", fields: [actorMemberProfileId], references: [id], onDelete: Cascade)
+  targetMemberProfile   MemberProfile     @relation("TargetInteractions", fields: [targetMemberProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([actorMemberProfileId, targetMemberProfileId, interactionType])
+  @@index([actorMemberProfileId, interactionType])
+  @@index([targetMemberProfileId, interactionType])
+}
+
+model ProfileVisit {
+  id                    String        @id @default(cuid())
+  viewerMemberProfileId String
+  viewedMemberProfileId String
+  source                String?
+  createdAt             DateTime      @default(now())
+  viewerMemberProfile   MemberProfile @relation("ViewerProfileVisits", fields: [viewerMemberProfileId], references: [id], onDelete: Cascade)
+  viewedMemberProfile   MemberProfile @relation("ViewedProfileVisits", fields: [viewedMemberProfileId], references: [id], onDelete: Cascade)
+
+  @@index([viewerMemberProfileId])
+  @@index([viewedMemberProfileId])
+}
+
+model SearchSave {
+  id              String        @id @default(cuid())
+  memberProfileId String
+  name            String
+  criteriaJson    Json
+  lastRunAt       DateTime?
+  alertEnabled    Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+}
+
+model ContactUnlock {
+  id                    String        @id @default(cuid())
+  viewerMemberProfileId String
+  targetMemberProfileId String
+  membershipId          String?
+  unlockSource          String
+  createdAt             DateTime      @default(now())
+  viewerMemberProfile   MemberProfile @relation("ViewerContactUnlocks", fields: [viewerMemberProfileId], references: [id], onDelete: Cascade)
+  targetMemberProfile   MemberProfile @relation("TargetContactUnlocks", fields: [targetMemberProfileId], references: [id], onDelete: Cascade)
+  membership            Membership?   @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@unique([viewerMemberProfileId, targetMemberProfileId])
+}
+
+model Conversation {
+  id           String                    @id @default(cuid())
+  type         ConversationType          @default(MEMBER_TO_MEMBER)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  id                String         @id @default(cuid())
+  conversationId    String
+  userId            String
+  memberProfileId   String?
+  joinedAt          DateTime       @default(now())
+  lastReadMessageId String?
+  isActive          Boolean        @default(true)
+  conversation      Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberProfile     MemberProfile? @relation(fields: [memberProfileId], references: [id], onDelete: SetNull)
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id                    String         @id @default(cuid())
+  legacyId              BigInt?        @unique
+  conversationId        String
+  senderUserId          String
+  senderMemberProfileId String?
+  messageType           MessageType    @default(TEXT)
+  body                  String
+  attachmentPath        String?
+  sentAt                DateTime       @default(now())
+  deliveredAt           DateTime?
+  readAt                DateTime?
+  deletedAt             DateTime?
+  conversation          Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderUser            User           @relation("SentMessages", fields: [senderUserId], references: [id], onDelete: Cascade)
+  senderMemberProfile   MemberProfile? @relation("SenderMemberMessages", fields: [senderMemberProfileId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, sentAt])
+}
+
+model MembershipPlan {
+  id                 String             @id @default(cuid())
+  legacyId           Int?               @unique
+  code               String             @unique
+  category           MembershipCategory @default(ONLINE)
+  nameEn             String
+  nameBn             String?
+  durationDays       Int
+  bdtPrice           Decimal            @db.Decimal(10, 2)
+  usdPrice           Decimal            @db.Decimal(10, 2)
+  contactLimit       Int                @default(0)
+  messageEnabled     Boolean            @default(false)
+  contactViewEnabled Boolean            @default(false)
+  highlightEnabled   Boolean            @default(false)
+  supportTier        String?
+  isActive           Boolean            @default(true)
+  sortOrder          Int                @default(0)
+  memberships        Membership[]
+}
+
+model Membership {
+  id               String           @id @default(cuid())
+  userId           String
+  memberProfileId  String?
+  membershipPlanId String
+  status           MembershipStatus @default(PENDING)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  sourcePaymentId  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberProfile    MemberProfile?   @relation(fields: [memberProfileId], references: [id], onDelete: SetNull)
+  membershipPlan   MembershipPlan   @relation(fields: [membershipPlanId], references: [id], onDelete: Restrict)
+  sourcePayment    Payment?         @relation("MembershipSourcePayment", fields: [sourcePaymentId], references: [id], onDelete: SetNull)
+  contactUnlocks   ContactUnlock[]
+
+  @@index([userId, status])
+}
+
+model Payment {
+  id                String             @id @default(cuid())
+  legacyId          Int?               @unique
+  userId            String?
+  actorType         RoleKey?
+  actorId           String?
+  paymentForType    PaymentForType
+  gateway           PaymentGateway
+  gatewayReference  String?
+  currency          String
+  subtotalAmount    Decimal            @db.Decimal(10, 2)
+  discountAmount    Decimal            @default(0) @db.Decimal(10, 2)
+  finalAmount       Decimal            @db.Decimal(10, 2)
+  status            PaymentStatus      @default(PENDING)
+  approvedByAdminId String?
+  approvedAt        DateTime?
+  metadataJson      Json?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User?              @relation("UserPayments", fields: [userId], references: [id], onDelete: SetNull)
+  approvedByAdmin   User?              @relation("ApprovedPayments", fields: [approvedByAdminId], references: [id], onDelete: SetNull)
+  paymentItems      PaymentItem[]
+  couponRedemptions CouponRedemption[]
+  memberships       Membership[]       @relation("MembershipSourcePayment")
+
+  @@index([paymentForType, status])
+  @@index([gateway, status])
+}
+
+model PaymentItem {
+  id        String  @id @default(cuid())
+  paymentId String
+  itemType  String
+  itemId    String?
+  amount    Decimal @db.Decimal(10, 2)
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model Coupon {
+  id               String             @id @default(cuid())
+  legacyId         Int?               @unique
+  code             String             @unique
+  discountType     String
+  amount           Decimal?           @db.Decimal(10, 2)
+  percent          Decimal?           @db.Decimal(5, 2)
+  currencyScope    String?
+  appliesTo        String             @default("UPGRADE")
+  maxTotalUses     Int?
+  maxUsesPerUser   Int?
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  isActive         Boolean            @default(true)
+  createdByAdminId String?
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  createdByAdmin   User?              @relation("CouponCreator", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  redemptions      CouponRedemption[]
+}
+
+model CouponRedemption {
+  id             String   @id @default(cuid())
+  legacyId       Int?     @unique
+  couponId       String
+  userId         String
+  paymentId      String?
+  currency       String
+  subtotalAmount Decimal  @db.Decimal(10, 2)
+  discountAmount Decimal  @db.Decimal(10, 2)
+  finalAmount    Decimal  @db.Decimal(10, 2)
+  redeemedAt     DateTime @default(now())
+  coupon         Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment        Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+}
+
+model GhotokProfile {
+  id                    String                       @id @default(cuid())
+  legacyId              Int?                         @unique
+  userId                String                       @unique
+  displayName           String
+  email                 String?
+  phone                 String?
+  address               String?
+  gender                GenderKey?
+  status                GhotokStatus                 @default(PENDING_REVIEW)
+  feeCurrency           String?
+  feeAmount             Int?
+  bioEn                 String?
+  bioBn                 String?
+  photoPath             String?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  managedMembers        MemberProfile[]              @relation("GhotokManagedProfiles")
+  memberLinks           GhotokMemberLink[]
+  wallet                GhotokCreditWallet?
+  creditEntries         GhotokCreditLedger[]
+  impersonationSessions GhotokImpersonationSession[]
+}
+
+model GhotokMemberLink {
+  id              String           @id @default(cuid())
+  ghotokProfileId String
+  memberProfileId String
+  status          GhotokLinkStatus @default(PENDING)
+  createdAt       DateTime         @default(now())
+  ghotokProfile   GhotokProfile    @relation(fields: [ghotokProfileId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile    @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([ghotokProfileId, memberProfileId])
+}
+
+model GhotokCreditWallet {
+  id              String        @id @default(cuid())
+  ghotokProfileId String        @unique
+  balance         Int           @default(0)
+  updatedAt       DateTime      @updatedAt
+  ghotokProfile   GhotokProfile @relation(fields: [ghotokProfileId], references: [id], onDelete: Cascade)
+}
+
+model GhotokCreditLedger {
+  id               String        @id @default(cuid())
+  legacyId         Int?          @unique
+  ghotokProfileId  String
+  entryType        String
+  amount           Int
+  balanceAfter     Int
+  referenceType    String?
+  referenceId      String?
+  notes            String?
+  createdByAdminId String?
+  createdAt        DateTime      @default(now())
+  ghotokProfile    GhotokProfile @relation(fields: [ghotokProfileId], references: [id], onDelete: Cascade)
+  createdByAdmin   User?         @relation("CreditEntryCreator", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+}
+
+model VendorProfile {
+  id                String                   @id @default(cuid())
+  legacyId          Int?                     @unique
+  userId            String?                  @unique
+  businessName      String
+  slug              String                   @unique
+  categoryName      String?
+  division          String?
+  district          String?
+  area              String?
+  address           String?
+  contactPerson     String?
+  phone             String?
+  email             String?
+  website           String?
+  descriptionEn     String?
+  descriptionBn     String?
+  logoPath          String?
+  status            VendorStatus             @default(PENDING_REVIEW)
+  billingStatus     String                   @default("FREE")
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  user              User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  packages          VendorPackage[]
+  leads             VendorLead[]
+  weddingShortlists WeddingVendorShortlist[]
+}
+
+model VendorPackage {
+  id              String        @id @default(cuid())
+  vendorProfileId String
+  nameEn          String
+  nameBn          String?
+  descriptionEn   String?
+  descriptionBn   String?
+  priceBdt        Decimal       @db.Decimal(10, 2)
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  vendorProfile   VendorProfile @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+}
+
+model VendorLead {
+  id               String          @id @default(cuid())
+  vendorProfileId  String
+  memberProfileId  String?
+  weddingProjectId String?
+  status           LeadStatus      @default(NEW)
+  requesterName    String?
+  requesterEmail   String?
+  requesterPhone   String?
+  source           String?
+  message          String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  vendorProfile    VendorProfile   @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+  memberProfile    MemberProfile?  @relation(fields: [memberProfileId], references: [id], onDelete: SetNull)
+  weddingProject   WeddingProject? @relation(fields: [weddingProjectId], references: [id], onDelete: SetNull)
+}
+
+model WeddingProject {
+  id              String                   @id @default(cuid())
+  memberProfileId String
+  title           String
+  weddingDate     DateTime?
+  city            String?
+  budgetBand      String?
+  guestTarget     Int?
+  status          WeddingProjectStatus     @default(DRAFT)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  memberProfile   MemberProfile            @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  guestEntries    WeddingGuestEntry[]
+  shortlists      WeddingVendorShortlist[]
+  vendorLeads     VendorLead[]
+}
+
+model WeddingGuestEntry {
+  id               String         @id @default(cuid())
+  legacyId         Int?           @unique
+  weddingProjectId String
+  guestName        String
+  guestAddress     String?
+  guestPhone       String?
+  guestEmail       String?
+  guestCount       Int            @default(1)
+  invited          Boolean        @default(false)
+  confirmed        Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  weddingProject   WeddingProject @relation(fields: [weddingProjectId], references: [id], onDelete: Cascade)
+}
+
+model WeddingVendorShortlist {
+  id               String         @id @default(cuid())
+  weddingProjectId String
+  vendorProfileId  String
+  status           LeadStatus     @default(NEW)
+  notes            String?
+  createdAt        DateTime       @default(now())
+  weddingProject   WeddingProject @relation(fields: [weddingProjectId], references: [id], onDelete: Cascade)
+  vendorProfile    VendorProfile  @relation(fields: [vendorProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([weddingProjectId, vendorProfileId])
+}
+
+model AdminUser {
+  id           String            @id @default(cuid())
+  legacyId     Int?              @unique
+  userId       String            @unique
+  displayName  String
+  isSuperAdmin Boolean           @default(false)
+  status       String            @default("ACTIVE")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissions  AdminPermission[]
+}
+
+model AdminPermission {
+  id              String    @id @default(cuid())
+  adminUserId     String
+  permissionKey   String
+  permissionValue String
+  createdAt       DateTime  @default(now())
+  adminUser       AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@unique([adminUserId, permissionKey])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  legacyId     Int?     @unique
+  actorUserId  String?
+  actorRole    RoleKey?
+  targetType   String
+  targetId     String?
+  action       String
+  description  String?
+  metadataJson Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  actorUser    User?    @relation("ActorAuditLogs", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([action, createdAt])
+}
+
+model ProductEvent {
+  id           String            @id @default(cuid())
+  userId       String?
+  actorRole    RoleKey?
+  anonymousId  String?
+  sessionId    String?
+  platform     AnalyticsPlatform
+  locale       LocaleKey?
+  eventName    String
+  pagePath     String?
+  screenName   String?
+  referrerPath String?
+  entityType   String?
+  entityId     String?
+  metadataJson Json?
+  occurredAt   DateTime          @default(now())
+  createdAt    DateTime          @default(now())
+  user         User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventName, occurredAt])
+  @@index([platform, occurredAt])
+  @@index([locale, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([anonymousId, occurredAt])
+}
+
+model UserDeviceToken {
+  id          String    @id @default(cuid())
+  legacyId    Int?      @unique
+  userId      String
+  deviceToken String    @unique
+  platform    String
+  status      String    @default("ACTIVE")
+  lastSeenAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, platform])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model GhotokImpersonationSession {
+  id              String        @id @default(cuid())
+  ghotokProfileId String
+  memberProfileId String
+  startedByUserId String
+  reason          String?
+  creditsSpent    Int           @default(0)
+  metadataJson    Json?
+  startedAt       DateTime      @default(now())
+  lastActionAt    DateTime?
+  endedAt         DateTime?
+  ghotokProfile   GhotokProfile @relation(fields: [ghotokProfileId], references: [id], onDelete: Cascade)
+  memberProfile   MemberProfile @relation(fields: [memberProfileId], references: [id], onDelete: Cascade)
+  startedByUser   User          @relation("StartedImpersonationSessions", fields: [startedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([ghotokProfileId, endedAt])
+  @@index([memberProfileId, endedAt])
+}
+
+model NotificationOutbox {
+  id             String              @id @default(cuid())
+  userId         String?
+  recipientEmail String
+  channel        NotificationChannel @default(EMAIL)
+  templateKey    String
+  subject        String
+  bodyJson       Json
+  metadataJson   Json?
+  status         NotificationStatus  @default(PENDING)
+  attempts       Int                 @default(0)
+  scheduledAt    DateTime            @default(now())
+  lastAttemptAt  DateTime?
+  sentAt         DateTime?
+  errorMessage   String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  user           User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledAt])
+  @@index([userId, createdAt])
+}
+
+model PlatformSetting {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  valueJson       Json
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  updatedByUser   User?    @relation("UpdatedPlatformSettings", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+}
+
+model MailCampaign {
+  id                  String             @id @default(cuid())
+  name                String
+  templateKey         String
+  subject             String
+  bodyJson            Json
+  audienceFiltersJson Json
+  status              MailCampaignStatus @default(DRAFT)
+  scheduledAt         DateTime?
+  queuedAt            DateTime?
+  recipientCount      Int                @default(0)
+  createdByUserId     String?
+  metadataJson        Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  createdByUser       User?              @relation("MailCampaignCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, scheduledAt])
+  @@index([createdAt])
+}

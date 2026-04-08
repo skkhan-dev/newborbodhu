@@ -1,0 +1,13 @@
+# Keep Cloud Build uploads predictable and include the lockfile.
+.git
+.DS_Store
+node_modules
+apps/*/node_modules
+apps/*/.next
+apps/*/dist
+coverage
+prototype
+docs
+data
+*.log
+npm-debug.log*

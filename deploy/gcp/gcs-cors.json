@@ -1,0 +1,18 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "https://borbodhu-web-test-508740568768.asia-south1.run.app"
+    ],
+    "method": [
+      "GET",
+      "HEAD",
+      "PUT"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "x-goog-resumable"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

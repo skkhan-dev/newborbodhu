@@ -1,0 +1,13 @@
+table_name	table_rows
+tbl_user	2
+tbl_partnerprofile	2
+tbl_usersnaps	2
+tbl_mailbox_recent	1
+tbl_payment	1
+tbl_membership	1
+tbl_ghotok	1
+tbl_ghotok_user	1
+tbl_ghotok_credit_wallet	1
+tbl_ghotok_credit_txn	1
+tbl_dir_business	1
+tbl_admin	1

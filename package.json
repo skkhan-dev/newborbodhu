@@ -1,0 +1,31 @@
+{
+  "name": "new-borbodhu",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace @borbodhu/web",
+    "dev:api": "npm run dev --workspace @borbodhu/api",
+    "dev:mobile": "npm run dev --workspace @borbodhu/mobile",
+    "ios:mobile": "npm run ios --workspace @borbodhu/mobile",
+    "android:mobile": "npm run android --workspace @borbodhu/mobile",
+    "build:web": "npm run build --workspace @borbodhu/web",
+    "build:api": "npm run build --workspace @borbodhu/api",
+    "build:mobile:web": "npm run export:web --workspace @borbodhu/mobile",
+    "start:web": "npm run start --workspace @borbodhu/web",
+    "start:api": "npm run start --workspace @borbodhu/api",
+    "typecheck:web": "npm run typecheck --workspace @borbodhu/web",
+    "typecheck:api": "npm run typecheck --workspace @borbodhu/api",
+    "typecheck:mobile": "npm run typecheck --workspace @borbodhu/mobile",
+    "prisma:generate": "npm run prisma:generate --workspace @borbodhu/api",
+    "db:push:api": "npm run db:push --workspace @borbodhu/api",
+    "seed:api": "npm run prisma:seed --workspace @borbodhu/api",
+    "migration:legacy:dry-run": "npm run migration:legacy:dry-run --workspace @borbodhu/api --",
+    "migration:legacy:load": "npm run migration:legacy:load --workspace @borbodhu/api --",
+    "migration:legacy:bulk-load": "npm run migration:legacy:bulk-load --workspace @borbodhu/api --",
+    "migration:legacy:reconcile": "npm run migration:legacy:reconcile --workspace @borbodhu/api --",
+    "qa:parity:smoke": "bash ./scripts/qa/run-parity-smoke.sh"
+  }
+}

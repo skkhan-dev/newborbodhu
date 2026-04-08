@@ -1,0 +1,43 @@
+{
+  "name": "@borbodhu/api",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:push": "prisma db push --schema prisma/schema.prisma --accept-data-loss",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "migration:legacy:dry-run": "tsx src/migration/legacy-dry-run.ts",
+    "migration:legacy:load": "tsx src/migration/legacy-load.ts",
+    "migration:legacy:bulk-load": "tsx src/migration/legacy-bulk-load.ts",
+    "migration:legacy:reconcile": "tsx src/migration/legacy-reconcile.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
+    "@google-cloud/storage": "^7.19.0",
+    "@nestjs/common": "11.1.17",
+    "@nestjs/config": "4.0.3",
+    "@nestjs/core": "11.1.17",
+    "@nestjs/jwt": "11.0.1",
+    "@nestjs/platform-express": "11.1.17",
+    "@nestjs/schedule": "^6.1.1",
+    "@prisma/client": "6.19.2",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
+    "reflect-metadata": "0.2.2",
+    "resend": "^6.9.4",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "prisma": "6.19.2",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

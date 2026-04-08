@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Borbodhu",
+    "slug": "borbodhu-mobile",
+    "scheme": "borbodhu",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.borbodhu.mobile"
+    },
+    "android": {
+      "package": "com.borbodhu.mobile"
+    },
+    "extra": {
+      "apiBaseUrl": "https://borbodhu-api-test-508740568768.asia-south1.run.app/v1"
+    }
+  }
+}
