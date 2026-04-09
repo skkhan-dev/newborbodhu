@@ -276,6 +276,7 @@ function MemberWorkspace({
   accessToken,
   currentUserId,
   locale = null,
+  assistantOpen,
   data,
   discovery,
   savedSearches,
@@ -287,10 +288,12 @@ function MemberWorkspace({
   initialVendorDirectory,
   contactUnlocks,
   onRefresh,
+  onOpenAssistant,
 }: {
   accessToken: string;
   currentUserId: string;
   locale?: PublicLocale | null;
+  assistantOpen: boolean;
   data: MemberDashboardResponse;
   discovery: DiscoveryResponse | null;
   savedSearches: SavedSearchItem[];
@@ -302,6 +305,7 @@ function MemberWorkspace({
   initialVendorDirectory: VendorDirectoryItem[];
   contactUnlocks: ContactUnlockItem[];
   onRefresh: () => Promise<void>;
+  onOpenAssistant: () => void;
 }) {
   type MemberSection = "overview" | "profile" | "preferences" | "media" | "billing" | "mailbox" | "discovery" | "ai-suggestions" | "contacts-viewed" | "wedding" | "vendors";
   const [memberSection, setMemberSection] = useState<MemberSection>("overview");
@@ -331,6 +335,7 @@ function MemberWorkspace({
       label: localeText(locale, "Connections", "সংযোগ"),
       items: [
         { key: "mailbox", label: localeText(locale, "Messages", "মেসেজ"), icon: "💬", count: conversations.length || undefined },
+        { key: "assistant", label: localeText(locale, "Ask AI", "AI জিজ্ঞাসা করুন"), icon: "🎙️" },
         { key: "discovery", label: localeText(locale, "Search Profiles", "প্রোফাইল সার্চ"), icon: "🔍" },
         { key: "ai-suggestions", label: localeText(locale, "AI Suggestions", "AI সাজেশন"), icon: "✨" },
         { key: "contacts-viewed", label: localeText(locale, "Contacts Viewed", "যোগাযোগ দেখা হয়েছে"), icon: "👁️" },
@@ -1314,8 +1319,20 @@ function MemberWorkspace({
       <aside className="dashboard-sidebar">
         <SidebarNav
           sections={memberSidebarSections}
-          activeKey={memberSection}
-          onNavigate={(key) => { if (key === "discovery") { router.push(localizePath("/search", locale)); return; } setMemberSection(key as MemberSection); setError(null); setFeedback(null); }}
+          activeKey={assistantOpen ? "assistant" : memberSection}
+          onNavigate={(key) => {
+            if (key === "assistant") {
+              onOpenAssistant();
+              return;
+            }
+            if (key === "discovery") {
+              router.push(localizePath("/search", locale));
+              return;
+            }
+            setMemberSection(key as MemberSection);
+            setError(null);
+            setFeedback(null);
+          }}
         />
       </aside>
       <div className="dashboard-content">
@@ -3533,6 +3550,7 @@ export function DashboardPageClient({
 }) {
   const { accessToken, isReady, isRefreshing, user } = useAuth();
   const shellCopy = getDashboardShellCopy(locale);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [memberData, setMemberData] = useState<MemberDashboardResponse | null>(null);
   const [discovery, setDiscovery] = useState<DiscoveryResponse | null>(null);
   const [savedSearches, setSavedSearches] = useState<SavedSearchItem[]>([]);
@@ -3863,6 +3881,16 @@ export function DashboardPageClient({
             </span>
           )}
           <div style={{ display: "flex", gap: 6, alignItems: "center", marginLeft: "auto" }}>
+            {!user.roles.includes("MEMBER") ? (
+              <button
+                type="button"
+                className="button button-soft"
+                style={{ fontSize: "0.78rem", padding: "6px 12px" }}
+                onClick={() => setAssistantOpen(true)}
+              >
+                {localeText(locale, "Ask AI", "AI জিজ্ঞাসা করুন")}
+              </button>
+            ) : null}
             {user.roles.map((role) => (
               <span key={role} className="tag tag-light" style={{ fontSize: "0.72rem" }}>
                 {role}
@@ -3879,7 +3907,13 @@ export function DashboardPageClient({
         </div>
       ) : null}
 
-      <DashboardAssistant accessToken={accessToken} user={user} locale={locale} />
+      <DashboardAssistant
+        accessToken={accessToken}
+        user={user}
+        locale={locale}
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+      />
 
       {/* Email verification nudge — only for unverified members */}
       {user.roles.includes("MEMBER") && !user.emailVerifiedAt && (
@@ -3920,6 +3954,7 @@ export function DashboardPageClient({
           accessToken={accessToken}
           currentUserId={user.id}
           locale={locale}
+          assistantOpen={assistantOpen}
           data={memberData}
           discovery={discovery}
           savedSearches={savedSearches}
@@ -3931,6 +3966,7 @@ export function DashboardPageClient({
           initialVendorDirectory={vendorDirectory}
           contactUnlocks={contactUnlocks}
           onRefresh={loadDashboard}
+          onOpenAssistant={() => setAssistantOpen(true)}
         />
       ) : null}
 

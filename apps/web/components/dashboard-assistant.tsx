@@ -138,10 +138,14 @@ export function DashboardAssistant({
   accessToken,
   user,
   locale = null,
+  open = true,
+  onClose,
 }: {
   accessToken: string;
   user: AuthUser;
   locale?: PublicLocale | null;
+  open?: boolean;
+  onClose?: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
@@ -320,8 +324,28 @@ export function DashboardAssistant({
     };
   }, []);
 
+  if (!open) {
+    return null;
+  }
+
   return (
-    <section className="dashboard-panel dashboard-panel-wide" style={{ marginBottom: 16 }}>
+    <section
+      className="dashboard-panel dashboard-panel-wide"
+      style={{
+        position: "fixed",
+        top: 88,
+        right: 20,
+        width: "min(520px, calc(100vw - 32px))",
+        maxHeight: "calc(100vh - 110px)",
+        overflow: "auto",
+        zIndex: 60,
+        boxShadow: "0 18px 44px rgba(17, 24, 39, 0.18)",
+        border: "1px solid var(--line)",
+        borderRadius: 18,
+        background: "rgba(255,255,255,0.98)",
+        backdropFilter: "blur(8px)",
+      }}
+    >
       <div className="panel-header">
         <div>
           <p className="section-kicker">{localeText(locale, "Voice Assistant", "ভয়েস অ্যাসিস্ট্যান্ট")}</p>
@@ -334,6 +358,16 @@ export function DashboardAssistant({
             )}
           </p>
         </div>
+        {onClose ? (
+          <button
+            type="button"
+            className="button button-soft"
+            style={{ fontSize: "0.8rem", padding: "7px 12px" }}
+            onClick={onClose}
+          >
+            {localeText(locale, "Close", "বন্ধ")}
+          </button>
+        ) : null}
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.85rem" }}>
           <input
             type="checkbox"
