@@ -112,7 +112,7 @@ const defaultDashboardShellCopy: DashboardShellCopy = {
   signInBody:
     "Create a free account or log in to manage your profile, search for matches, and plan your wedding journey.",
   loginLabel: "Log In",
-  signupLabel: "Register Free",
+  signupLabel: "Join Free",
   heroEyebrowPrimary: "Your Borbodhu Dashboard",
   heroEyebrowSecondary: "Secure · Private · Family-safe",
   heroTitleTemplate: "Welcome back, {email}",
@@ -335,7 +335,7 @@ function MemberWorkspace({
       label: localeText(locale, "Connections", "সংযোগ"),
       items: [
         { key: "mailbox", label: localeText(locale, "Messages", "মেসেজ"), icon: "💬", count: conversations.length || undefined },
-        { key: "assistant", label: localeText(locale, "Ask AI", "AI জিজ্ঞাসা করুন"), icon: "🎙️" },
+        { key: "assistant", label: localeText(locale, "AI Chat", "AI চ্যাট"), icon: "🎙️" },
         { key: "discovery", label: localeText(locale, "Search Profiles", "প্রোফাইল সার্চ"), icon: "🔍" },
         { key: "ai-suggestions", label: localeText(locale, "AI Suggestions", "AI সাজেশন"), icon: "✨" },
         { key: "contacts-viewed", label: localeText(locale, "Contacts Viewed", "যোগাযোগ দেখা হয়েছে"), icon: "👁️" },
@@ -3888,7 +3888,7 @@ export function DashboardPageClient({
                 style={{ fontSize: "0.78rem", padding: "6px 12px" }}
                 onClick={() => setAssistantOpen(true)}
               >
-                {localeText(locale, "Ask AI", "AI জিজ্ঞাসা করুন")}
+                {localeText(locale, "AI Chat", "AI চ্যাট")}
               </button>
             ) : null}
             {user.roles.map((role) => (

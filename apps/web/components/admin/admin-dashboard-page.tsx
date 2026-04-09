@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import { DashboardAssistant } from "@/components/dashboard-assistant";
 import { SidebarNav, type SidebarSection } from "@/components/ui/sidebar-nav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/ui/stat-card";
@@ -56,6 +57,7 @@ const sidebarSections: SidebarSection[] = [
     label: "Admin",
     items: [
       { key: "overview", label: "Overview", icon: "◉" },
+      { key: "assistant", label: "AI Chat", icon: "🎙️" },
       { key: "reviews", label: "Profile Reviews", icon: "⎘" },
       { key: "photos", label: "Photo Queue", icon: "⬡" },
       { key: "payments", label: "Manual Payments", icon: "₹" },
@@ -69,6 +71,7 @@ export function AdminDashboardPage({ locale = null }: { locale?: PublicLocale | 
   const { accessToken, user, isReady } = useAuth();
   const { toast } = useToast();
   const [section, setSection] = useState<AdminSection>("overview");
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   // Core data
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null);
@@ -220,7 +223,7 @@ export function AdminDashboardPage({ locale = null }: { locale?: PublicLocale | 
         method: "POST",
         token: accessToken,
       });
-      toast(`Photo ${action}d.`, "success");
+      toast(action === "approve" ? "Photo approved." : "Photo rejected.", "success");
       setPendingPhotos((prev) => prev.filter((p) => p.id !== mediaId));
     } catch (e) {
       toast(getErrorMessage(e), "error");
@@ -259,7 +262,7 @@ export function AdminDashboardPage({ locale = null }: { locale?: PublicLocale | 
         method: "POST",
         token: accessToken,
       });
-      toast(`Photo ${action}d.`, "success");
+      toast(action === "approve" ? "Photo approved." : "Photo rejected.", "success");
       // Refresh review list to get updated photo status
       const rv = await apiRequest<AdminProfileReviewResponse>("/admin/profile-reviews?status=PENDING", { token: accessToken });
       setReviews(rv.items);
@@ -298,7 +301,7 @@ export function AdminDashboardPage({ locale = null }: { locale?: PublicLocale | 
         token: accessToken,
         body: { notes: `Reviewed from admin panel: ${action}.` },
       });
-      toast(`Payment ${action}d.`, "success");
+      toast(action === "approve" ? "Payment approved." : "Payment rejected.", "success");
       void load();
     } catch (e) {
       toast(getErrorMessage(e), "error");
@@ -474,12 +477,26 @@ export function AdminDashboardPage({ locale = null }: { locale?: PublicLocale | 
           </div>
           <SidebarNav
             sections={sidebarSections}
-            activeKey={section}
-            onNavigate={(key) => setSection(key as AdminSection)}
+            activeKey={assistantOpen ? "assistant" : section}
+            onNavigate={(key) => {
+              if (key === "assistant") {
+                setAssistantOpen(true);
+                return;
+              }
+              setAssistantOpen(false);
+              setSection(key as AdminSection);
+            }}
           />
         </aside>
 
         <div className="dashboard-content">
+          <DashboardAssistant
+            accessToken={accessToken ?? ""}
+            user={user}
+            locale={locale}
+            open={assistantOpen}
+            onClose={() => setAssistantOpen(false)}
+          />
           {loading && section !== "members" && section !== "audit" ? (
             <Skeleton variant="card" count={3} />
           ) : (

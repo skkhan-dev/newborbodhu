@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import { DashboardAssistant } from "@/components/dashboard-assistant";
 import { SidebarNav, type SidebarSection } from "@/components/ui/sidebar-nav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/ui/stat-card";
@@ -27,6 +28,8 @@ type GhotokMember = {
   gender: string;
   status: string;
   approvalStatus: string;
+  phone?: string | null;
+  managedByGhotokId?: string | null;
   createdAt: string;
 };
 
@@ -78,6 +81,7 @@ const sidebarSections: SidebarSection[] = [
     label: "Ghotok",
     items: [
       { key: "dashboard", label: "Dashboard", icon: "◉" },
+      { key: "assistant", label: "AI Chat", icon: "🎙️" },
       { key: "members", label: "Managed Members", icon: "☷" },
       { key: "credits", label: "Credit History", icon: "◈" },
       { key: "profile", label: "My Profile", icon: "✎" },
@@ -98,6 +102,7 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
   const { accessToken, user, isReady } = useAuth();
   const { toast } = useToast();
   const [section, setSection] = useState<GhotokSection>("dashboard");
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [data, setData] = useState<GhotokDashboardResponse | null>(null);
   const [members, setMembers] = useState<GhotokMember[]>([]);
   const [ledger, setLedger] = useState<CreditLedgerEntry[]>([]);
@@ -114,6 +119,11 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
   // Create member form
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState<CreateMemberForm>(emptyCreateForm);
+
+  // Link existing member search
+  const [memberMode, setMemberMode] = useState<"list" | "create" | "link">("list");
+  const [linkQuery, setLinkQuery] = useState("");
+  const [linkResults, setLinkResults] = useState<GhotokMember[]>([]);
 
   // Profile edit form
   const [profileForm, setProfileForm] = useState<ProfileForm>({
@@ -188,6 +198,50 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
     }
   }
 
+  async function searchForLink(q: string) {
+    if (!accessToken || !q.trim()) return;
+    setBusyKey("link-search");
+    try {
+      const results = await apiRequest<GhotokMember[]>(`/ghotok/me/member-search?q=${encodeURIComponent(q.trim())}`, { token: accessToken });
+      setLinkResults(results);
+    } catch (e) {
+      toast(getErrorMessage(e), "error");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function linkMember(memberProfileId: string) {
+    if (!accessToken) return;
+    setBusyKey(`link:${memberProfileId}`);
+    try {
+      await apiRequest(`/ghotok/me/link-member/${memberProfileId}`, { method: "POST", token: accessToken });
+      toast(localeText(locale, "Member linked successfully.", "মেম্বার লিঙ্ক করা হয়েছে।"), "success");
+      setMemberMode("list");
+      setLinkQuery("");
+      setLinkResults([]);
+      await load();
+    } catch (e) {
+      toast(getErrorMessage(e), "error");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function unlinkMember(memberProfileId: string) {
+    if (!accessToken) return;
+    setBusyKey(`unlink:${memberProfileId}`);
+    try {
+      await apiRequest(`/ghotok/me/link-member/${memberProfileId}`, { method: "DELETE", token: accessToken });
+      toast(localeText(locale, "Member unlinked.", "মেম্বার আনলিঙ্ক করা হয়েছে।"), "success");
+      await load();
+    } catch (e) {
+      toast(getErrorMessage(e), "error");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   async function startImpersonation(memberProfileId: string) {
     if (!accessToken) return;
     setBusyKey(`impersonate:${memberProfileId}`);
@@ -234,11 +288,14 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
         { method: "POST", token: accessToken, body: { fileName: file.name, mimeType: file.type } },
       );
       // Step 2: upload to GCS
-      await fetch(req.uploadUrl, {
+      const uploadRes = await fetch(req.uploadUrl, {
         method: req.method,
         body: file,
         headers: { "Content-Type": file.type },
       });
+      if (!uploadRes.ok) {
+        throw new Error(`Photo upload failed (${uploadRes.status}). Please try again.`);
+      }
       // Step 3: commit
       await apiRequest("/ghotok/me/photo", {
         method: "PATCH",
@@ -267,7 +324,7 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
           bioBn: profileForm.bioBn.trim() || undefined,
           phone: profileForm.phone.trim() || undefined,
           address: profileForm.address.trim() || undefined,
-          feeAmount: profileForm.feeAmount ? parseInt(profileForm.feeAmount, 10) : undefined,
+          feeAmount: profileForm.feeAmount ? (isNaN(parseInt(profileForm.feeAmount, 10)) ? undefined : parseInt(profileForm.feeAmount, 10)) : undefined,
           feeCurrency: profileForm.feeCurrency.trim() || undefined,
         },
       });
@@ -319,19 +376,30 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
       key: "id",
       label: localeText(locale, "Action", "অ্যাকশন"),
       render: (row) => (
-        <button
-          type="button"
-          className="button button-soft"
-          style={{ padding: "2px 10px", fontSize: "0.78rem" }}
-          disabled={busyKey === `impersonate:${row.id}` || activeSession?.memberProfileId === row.id}
-          onClick={() => void startImpersonation(row.id)}
-        >
-          {activeSession?.memberProfileId === row.id
-            ? localeText(locale, "Active", "সক্রিয়")
-            : busyKey === `impersonate:${row.id}`
-              ? localeText(locale, "Starting…", "শুরু হচ্ছে…")
-              : localeText(locale, "Act as", "হিসেবে কাজ করুন")}
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            type="button"
+            className="button button-soft"
+            style={{ padding: "2px 10px", fontSize: "0.78rem" }}
+            disabled={busyKey === `impersonate:${row.id}` || activeSession?.memberProfileId === row.id}
+            onClick={() => void startImpersonation(row.id)}
+          >
+            {activeSession?.memberProfileId === row.id
+              ? localeText(locale, "Active", "সক্রিয়")
+              : busyKey === `impersonate:${row.id}`
+                ? localeText(locale, "Starting…", "শুরু হচ্ছে…")
+                : localeText(locale, "Act as", "হিসেবে কাজ করুন")}
+          </button>
+          <button
+            type="button"
+            className="button button-soft"
+            style={{ padding: "2px 8px", fontSize: "0.75rem", color: "var(--rose)" }}
+            disabled={busyKey === `unlink:${row.id}`}
+            onClick={() => void unlinkMember(row.id)}
+          >
+            {busyKey === `unlink:${row.id}` ? "…" : localeText(locale, "Unlink", "আনলিঙ্ক")}
+          </button>
+        </div>
       ),
     },
   ];
@@ -349,12 +417,26 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
           </div>
           <SidebarNav
             sections={sidebarSections}
-            activeKey={section}
-            onNavigate={(key) => setSection(key as GhotokSection)}
+            activeKey={assistantOpen ? "assistant" : section}
+            onNavigate={(key) => {
+              if (key === "assistant") {
+                setAssistantOpen(true);
+                return;
+              }
+              setAssistantOpen(false);
+              setSection(key as GhotokSection);
+            }}
           />
         </aside>
 
         <div className="dashboard-content">
+          <DashboardAssistant
+            accessToken={accessToken ?? ""}
+            user={user}
+            locale={locale}
+            open={assistantOpen}
+            onClose={() => setAssistantOpen(false)}
+          />
           {/* Active impersonation banner */}
           {activeSession && (
             <div className="error-banner" style={{ background: "var(--gold-bg, #fef9c3)", color: "#92400e", border: "1px solid #fde68a", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -443,16 +525,89 @@ export function GhotokDashboardPage({ locale = null }: { locale?: PublicLocale |
                       <Badge tone="teal">{members.length}</Badge>
                       <button
                         type="button"
+                        className="button button-soft"
+                        style={{ padding: "4px 14px", fontSize: "0.85rem" }}
+                        onClick={() => {
+                          const next = memberMode === "link" ? "list" : "link";
+                          setMemberMode(next);
+                          if (next !== "link") { setLinkQuery(""); setLinkResults([]); }
+                        }}
+                      >
+                        {memberMode === "link" ? localeText(locale, "Cancel", "বাতিল") : localeText(locale, "Link Existing Member", "বিদ্যমান মেম্বার লিঙ্ক করুন")}
+                      </button>
+                      <button
+                        type="button"
                         className="button button-primary"
                         style={{ padding: "4px 14px", fontSize: "0.85rem" }}
-                        onClick={() => setShowCreateForm((v) => !v)}
+                        onClick={() => {
+                          setMemberMode(memberMode === "create" ? "list" : "create");
+                          setLinkQuery("");
+                          setLinkResults([]);
+                        }}
                       >
-                        {showCreateForm ? localeText(locale, "Cancel", "বাতিল") : `+ ${localeText(locale, "Add Member", "মেম্বার যোগ করুন")}`}
+                        {memberMode === "create" ? localeText(locale, "Cancel", "বাতিল") : `+ ${localeText(locale, "Create New", "নতুন তৈরি করুন")}`}
                       </button>
                     </div>
                   </div>
 
-                  {showCreateForm && (
+                  {/* Link existing member search */}
+                  {memberMode === "link" && (
+                    <div className="dashboard-panel" style={{ marginBottom: 20, padding: 16 }}>
+                      <p className="section-kicker" style={{ marginBottom: 12 }}>{localeText(locale, "Search members who signed up themselves", "যে মেম্বাররা নিজে সাইন আপ করেছেন")}</p>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder={localeText(locale, "Search by name, ID, or phone…", "নাম, আইডি বা ফোন দিয়ে সার্চ করুন…")}
+                          value={linkQuery}
+                          onChange={(e) => setLinkQuery(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") void searchForLink(linkQuery); }}
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="button button-primary"
+                          onClick={() => void searchForLink(linkQuery)}
+                          disabled={!linkQuery.trim() || busyKey === "link-search"}
+                          style={{ padding: "8px 16px", fontSize: "0.85rem" }}
+                        >
+                          {busyKey === "link-search" ? localeText(locale, "Searching…", "সার্চ হচ্ছে…") : localeText(locale, "Search", "সার্চ")}
+                        </button>
+                      </div>
+                      {linkResults.length > 0 && (
+                        <div style={{ display: "grid", gap: 8 }}>
+                          {linkResults.map((r) => (
+                            <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", border: "1px solid var(--line)", borderRadius: 10, background: "var(--surface)" }}>
+                              <div style={{ flex: 1 }}>
+                                <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{r.displayName || r.firstName}</span>
+                                <span style={{ color: "var(--muted)", fontSize: "0.8rem", marginLeft: 8 }}>{r.displayId}</span>
+                                {r.phone && <span style={{ color: "var(--muted)", fontSize: "0.8rem", marginLeft: 8 }}>· {r.phone}</span>}
+                                <span style={{ marginLeft: 8 }}>
+                                  <Badge tone={r.managedByGhotokId ? "gold" : "muted"}>{r.managedByGhotokId ? localeText(locale, "Already linked", "ইতোমধ্যে লিঙ্কড") : r.status}</Badge>
+                                </span>
+                              </div>
+                              {!r.managedByGhotokId && (
+                                <button
+                                  type="button"
+                                  className="button button-primary"
+                                  style={{ padding: "4px 12px", fontSize: "0.8rem" }}
+                                  disabled={busyKey === `link:${r.id}`}
+                                  onClick={() => void linkMember(r.id)}
+                                >
+                                  {busyKey === `link:${r.id}` ? localeText(locale, "Linking…", "লিঙ্ক হচ্ছে…") : localeText(locale, "Link", "লিঙ্ক করুন")}
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {linkResults.length === 0 && linkQuery && (
+                        <p className="hint">{localeText(locale, "No members found. Try a different search.", "কোনো মেম্বার পাওয়া যায়নি।")}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {memberMode === "create" && (
                     <div className="dashboard-panel" style={{ marginBottom: 20, padding: 16 }}>
                       <p className="section-kicker" style={{ marginBottom: 12 }}>{localeText(locale, "New Member", "নতুন মেম্বার")}</p>
                       <div className="input-grid">
