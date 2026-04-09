@@ -10,5 +10,6 @@ import { MailboxService } from "./mailbox.service";
   imports: [PrismaModule, AuthModule, NotificationsModule],
   controllers: [MailboxController],
   providers: [MailboxService],
+  exports: [MailboxService],
 })
 export class MailboxModule {}

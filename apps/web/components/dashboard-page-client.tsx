@@ -39,6 +39,7 @@ import {
   GhotokWorkspace,
   type GhotokDashboardResponse,
 } from "@/components/ghotok/ghotok-workspace";
+import { DashboardAssistant } from "@/components/dashboard-assistant";
 import { trackProductEvent } from "@/lib/analytics";
 import { apiRequest, getErrorMessage } from "@/lib/api";
 import { type SuperAdminCommercialSettings } from "@/lib/commercial";
@@ -3877,6 +3878,8 @@ export function DashboardPageClient({
           {shellCopy.refreshing}
         </div>
       ) : null}
+
+      <DashboardAssistant accessToken={accessToken} user={user} locale={locale} />
 
       {/* Email verification nudge — only for unverified members */}
       {user.roles.includes("MEMBER") && !user.emailVerifiedAt && (

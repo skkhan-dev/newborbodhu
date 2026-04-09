@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
+import { AssistantModule } from "./assistant/assistant.module";
 import { AdminModule } from "./admin/admin.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { AuthModule } from "./auth/auth.module";
@@ -29,6 +30,7 @@ import { WeddingModule } from "./wedding/wedding.module";
     }),
     StorageModule,
     PrismaModule,
+    AssistantModule,
     HealthModule,
     MetaModule,
     AnalyticsModule,

@@ -9,5 +9,6 @@ import { WeddingService } from "./wedding.service";
   imports: [PrismaModule, AuthModule],
   controllers: [WeddingController],
   providers: [WeddingService],
+  exports: [WeddingService],
 })
 export class WeddingModule {}
