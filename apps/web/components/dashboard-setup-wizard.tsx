@@ -311,17 +311,19 @@ export function DashboardSetupWizard() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <label className="field">
                 <span>Home country</span>
-                <select value={careerForm.homeCountryCode} onChange={(e) => uc("homeCountryCode", e.target.value)}>
+                <select value={careerForm.homeCountryCode} onChange={(e) => { uc("homeCountryCode", e.target.value); if (e.target.value !== "BD") uc("homeDistrict", ""); }}>
                   {fullCountryList.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                 </select>
               </label>
-              <label className="field">
-                <span>Home district (BD)</span>
-                <select value={careerForm.homeDistrict} onChange={(e) => uc("homeDistrict", e.target.value)}>
-                  <option value="">— select —</option>
-                  {bdDistricts.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </label>
+              {careerForm.homeCountryCode === "BD" && (
+                <label className="field">
+                  <span>Home district</span>
+                  <select value={careerForm.homeDistrict} onChange={(e) => uc("homeDistrict", e.target.value)}>
+                    <option value="">— select —</option>
+                    {bdDistricts.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+              )}
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 8 }}>

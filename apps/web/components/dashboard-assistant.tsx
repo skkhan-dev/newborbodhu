@@ -82,6 +82,7 @@ function defaultSuggestions(user: AuthUser | null) {
       "What needs my attention today?",
       "How many manual payments need review?",
       "How many profiles are pending review?",
+      ...(user.roles.includes("SUPER_ADMIN") ? ["How many ghotoks are pending review?"] : []),
     ];
   }
   if (user.roles.includes("GHOTOK")) {
@@ -89,6 +90,7 @@ function defaultSuggestions(user: AuthUser | null) {
       "What needs my attention today?",
       "How many members am I managing?",
       "What is my wallet balance?",
+      "Create managed member Nabila Islam, female looking for male",
     ];
   }
   if (user.roles.includes("VENDOR")) {
@@ -115,8 +117,10 @@ function localizeSuggestion(locale: PublicLocale | null, suggestion: string) {
       .replace("What is my membership status?", "আমার মেম্বারশিপ স্ট্যাটাস কী?")
       .replace("How many manual payments need review?", "কতটি ম্যানুয়াল পেমেন্ট রিভিউ দরকার?")
       .replace("How many profiles are pending review?", "কতটি প্রোফাইল রিভিউয়ের অপেক্ষায় আছে?")
+      .replace("How many ghotoks are pending review?", "কতজন ঘটক রিভিউয়ের অপেক্ষায় আছেন?")
       .replace("How many members am I managing?", "আমি কতজন মেম্বার ম্যানেজ করছি?")
       .replace("What is my wallet balance?", "আমার ওয়ালেট ব্যালেন্স কত?")
+      .replace("Create managed member Nabila Islam, female looking for male", "ম্যানেজড মেম্বার নাবিলা ইসলাম তৈরি করুন, female looking for male")
       .replace("How many leads do I have?", "আমার কতটি লিড আছে?")
       .replace("What is my billing status?", "আমার বিলিং স্ট্যাটাস কী?")
       .replace("Summarize my wedding plan.", "আমার ওয়েডিং প্ল্যানের সারাংশ বলো।")

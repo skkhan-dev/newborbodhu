@@ -118,7 +118,7 @@ export function ForgotPasswordForm() {
             <p style={{ marginTop: 8 }}>
               Don&apos;t have an account?{" "}
               <Link href="/signup" style={{ color: "var(--rose)", fontWeight: 700 }}>
-                Register free
+                Join Free
               </Link>
             </p>
           </div>

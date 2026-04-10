@@ -129,7 +129,7 @@ export function PublicProfileCard({ profile, locale, compact = false }: PublicPr
             {localeText(locale, "View profile", "প্রোফাইল দেখুন")}
           </Link>
           <Link href={localizePath("/signup", locale)} className="button button-soft" style={{ fontSize: "0.82rem", padding: "10px 14px" }}>
-            {localeText(locale, "Connect", "যোগাযোগ")}
+            {localeText(locale, "Join Free", "যোগাযোগ")}
           </Link>
         </div>
         <a

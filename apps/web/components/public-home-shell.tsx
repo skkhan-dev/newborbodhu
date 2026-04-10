@@ -101,7 +101,7 @@ export async function PublicHomeShell({ locale }: PublicHomeShellProps) {
                 {localeText(locale, "Member login", "মেম্বার লগ ইন")}
               </Link>
               <Link href={localizePath("/signup", locale)} className="button button-soft">
-                {localeText(locale, "Register free", "ফ্রি রেজিস্টার করুন")}
+                {localeText(locale, "Join Free", "ফ্রি রেজিস্টার করুন")}
               </Link>
             </div>
           </div>
@@ -297,7 +297,7 @@ export async function PublicHomeShell({ locale }: PublicHomeShellProps) {
             <span className="actor-badge">{localeText(locale, "Member", "মেম্বার")}</span>
             <h3>{localeText(locale, "Bride or Groom", "বর বা কনে")}</h3>
             <p>{localeText(locale, "Create a verified profile, search for your match, express interest, and plan your wedding.", "যাচাইকৃত প্রোফাইল তৈরি করুন, ম্যাচ খুঁজুন, আগ্রহ প্রকাশ করুন এবং বিয়ের পরিকল্পনা করুন।")}</p>
-            <a href={localizePath("/signup", locale)} className="actor-link">{localeText(locale, "Register free →", "ফ্রি রেজিস্ট্রেশন →")}</a>
+            <a href={localizePath("/signup", locale)} className="actor-link">{localeText(locale, "Join Free →", "ফ্রি রেজিস্ট্রেশন →")}</a>
           </article>
           <article className="actor-card">
             <span className="actor-badge" style={{ background: "var(--teal-soft)", color: "var(--teal)" }}>{localeText(locale, "Ghotok", "ঘটক")}</span>
@@ -327,7 +327,7 @@ export async function PublicHomeShell({ locale }: PublicHomeShellProps) {
           <p>{localeText(locale, "Join for free. Get verified. Find your life partner.", "ফ্রিতে যোগ দিন। যাচাই করুন। আপনার জীবনসঙ্গী খুঁজুন।")}</p>
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <a href={localizePath("/signup", locale)} className="button button-primary">{localeText(locale, "Register free", "ফ্রি রেজিস্ট্রেশন")}</a>
+          <a href={localizePath("/signup", locale)} className="button button-primary">{localeText(locale, "Join Free", "ফ্রি রেজিস্ট্রেশন")}</a>
           <a href={localizePath("/profiles", locale)} className="button button-secondary">{localeText(locale, "Browse profiles", "প্রোফাইল দেখুন")}</a>
         </div>
       </section>

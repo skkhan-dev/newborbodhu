@@ -203,9 +203,87 @@ export class GhotokService {
         lookingFor: true,
         status: true,
         approvalStatus: true,
+        phone: true,
         createdAt: true,
       },
     });
+  }
+
+  async searchAllMembers(userId: string, q?: string) {
+    await this.requireGhotok(userId);
+    const keyword = q?.trim();
+    return this.prisma.memberProfile.findMany({
+      where: {
+        ...(keyword
+          ? {
+              OR: [
+                { firstName: { contains: keyword, mode: "insensitive" } },
+                { lastName: { contains: keyword, mode: "insensitive" } },
+                { displayName: { contains: keyword, mode: "insensitive" } },
+                { displayId: { contains: keyword, mode: "insensitive" } },
+                { phone: { contains: keyword, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        displayId: true,
+        firstName: true,
+        lastName: true,
+        displayName: true,
+        gender: true,
+        status: true,
+        approvalStatus: true,
+        phone: true,
+        profileOwnerType: true,
+        managedByGhotokId: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async linkExistingMember(userId: string, memberProfileId: string) {
+    const ghotok = await this.requireGhotok(userId);
+    const member = await this.prisma.memberProfile.findUnique({
+      where: { id: memberProfileId },
+      select: { id: true, managedByGhotokId: true },
+    });
+    if (!member) throw new NotFoundException("Member not found.");
+    if (member.managedByGhotokId === ghotok.id) {
+      return { linked: true }; // already linked to this ghotok, idempotent
+    }
+    if (member.managedByGhotokId) {
+      throw new ForbiddenException("This member is already managed by another ghotok.");
+    }
+
+    await this.prisma.memberProfile.update({
+      where: { id: memberProfileId },
+      data: { managedByGhotokId: ghotok.id },
+    });
+
+    return { linked: true };
+  }
+
+  async unlinkMember(userId: string, memberProfileId: string) {
+    const ghotok = await this.requireGhotok(userId);
+    const member = await this.prisma.memberProfile.findUnique({
+      where: { id: memberProfileId },
+      select: { id: true, managedByGhotokId: true },
+    });
+    if (!member) throw new NotFoundException("Member not found.");
+    if (member.managedByGhotokId !== ghotok.id) {
+      throw new ForbiddenException("This member is not linked to you.");
+    }
+
+    await this.prisma.memberProfile.update({
+      where: { id: memberProfileId },
+      data: { managedByGhotokId: null },
+    });
+
+    return { unlinked: true };
   }
 
   async createManagedMember(userId: string, dto: CreateGhotokMemberDto) {

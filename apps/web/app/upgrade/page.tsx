@@ -212,7 +212,7 @@ export default async function UpgradePage() {
           }}
         >
           {[
-            { step: "1", title: "Register Free", desc: "Create your profile and browse all public profiles at no cost." },
+            { step: "1", title: "Join Free", desc: "Create your profile and browse all public profiles at no cost." },
             { step: "2", title: "Choose a Plan", desc: "Pick Bronze, Silver, Gold, or Platinum based on your needs." },
             { step: "3", title: "Pay Once", desc: "Pay via bKash, PayPal, or at our office. No recurring charges." },
             { step: "4", title: "Start Connecting", desc: "View contacts, send messages, and find your match within the plan period." },
@@ -656,7 +656,7 @@ export default async function UpgradePage() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
             <Link href="/signup" className="button button-primary" style={{ justifyContent: "center" }}>
-              Register free
+              Join Free
             </Link>
             <Link href="/profiles" className="button button-soft" style={{ justifyContent: "center" }}>
               Browse profiles
@@ -756,7 +756,7 @@ export default async function UpgradePage() {
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <Link href="/signup" className="button button-gold" style={{ justifyContent: "center" }}>
-              Create free account
+              Join Free
             </Link>
             <Link href="/profiles" className="button button-soft" style={{ justifyContent: "center" }}>
               Browse profiles first

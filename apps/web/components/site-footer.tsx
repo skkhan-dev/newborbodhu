@@ -35,7 +35,7 @@ const publicFooterLinks = [
   {
     heading: "Account",
     links: [
-      { href: "/signup", label: "Register free" },
+      { href: "/signup", label: "Join Free" },
       { href: "/login", label: "Member login" },
       { href: "/dashboard", label: "Dashboard" },
       { href: "/forgot-password", label: "Reset password" },

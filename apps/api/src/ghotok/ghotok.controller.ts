@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { RoleKey } from "@prisma/client";
 
 import { CurrentActor } from "../common/decorators/current-actor.decorator";
@@ -63,6 +63,30 @@ export class GhotokController {
     @Body() dto: CreateGhotokMemberDto,
   ) {
     return this.ghotokService.createManagedMember(userId, dto);
+  }
+
+  @Get("me/member-search")
+  searchAllMembers(
+    @CurrentActor("userId") userId: string,
+    @Query("q") q?: string,
+  ) {
+    return this.ghotokService.searchAllMembers(userId, q);
+  }
+
+  @Post("me/link-member/:memberProfileId")
+  linkExistingMember(
+    @CurrentActor("userId") userId: string,
+    @Param("memberProfileId") memberProfileId: string,
+  ) {
+    return this.ghotokService.linkExistingMember(userId, memberProfileId);
+  }
+
+  @Delete("me/link-member/:memberProfileId")
+  unlinkMember(
+    @CurrentActor("userId") userId: string,
+    @Param("memberProfileId") memberProfileId: string,
+  ) {
+    return this.ghotokService.unlinkMember(userId, memberProfileId);
   }
 
   @Get("me/impersonation")

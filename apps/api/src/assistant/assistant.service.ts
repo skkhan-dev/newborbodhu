@@ -13,9 +13,11 @@ import {
 import { AdminService } from "../admin/admin.service";
 import { AuthService } from "../auth/auth.service";
 import { AuthActor } from "../common/types/auth-actor.type";
+import { GhotokService } from "../ghotok/ghotok.service";
 import { MailboxService } from "../mailbox/mailbox.service";
 import { MemberProfilesService } from "../member-profiles/member-profiles.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { SuperAdminService } from "../super-admin/super-admin.service";
 import { VendorsService } from "../vendors/vendors.service";
 import { WeddingService } from "../wedding/wedding.service";
 import { QueryAssistantDto } from "./dto/query-assistant.dto";
@@ -54,8 +56,10 @@ export class AssistantService {
     private readonly mailboxService: MailboxService,
     private readonly weddingService: WeddingService,
     private readonly adminService: AdminService,
+    private readonly superAdminService: SuperAdminService,
     private readonly memberProfilesService: MemberProfilesService,
     private readonly vendorsService: VendorsService,
+    private readonly ghotokService: GhotokService,
   ) {}
 
   async query(actor: AuthActor, dto: QueryAssistantDto): Promise<AssistantAnswer> {
@@ -114,6 +118,8 @@ export class AssistantService {
     }
 
     if (actor.roles.includes(RoleKey.GHOTOK) && actor.ghotokProfileId) {
+      const proposedAction = await this.planGhotokAction(actor, query, normalized);
+      if (proposedAction) return this.localizeAssistantAnswer(locale, proposedAction);
       return this.localizeAssistantAnswer(locale, await this.getGhotokSummary(actor, normalized));
     }
 
@@ -555,6 +561,47 @@ export class AssistantService {
       guestName,
       guestCount: countMatch ? Number(countMatch[1]) : 1,
     };
+  }
+
+  private parseGenderHint(normalized: string): "MALE" | "FEMALE" | null {
+    if (/\b(female|woman|girl|lady|bride)\b/i.test(normalized)) return "FEMALE";
+    if (/\b(male|man|boy|groom)\b/i.test(normalized)) return "MALE";
+    return null;
+  }
+
+  private parseManagedMemberDraft(raw: string) {
+    const normalized = raw.toLowerCase();
+    const cleaned = raw
+      .replace(/^(create|add|new)\s+(a\s+)?managed\s+member/gi, "")
+      .replace(/^(named|called)\s+/gi, "")
+      .trim();
+    const nameChunk = cleaned.split(/\b(female|male|looking for|phone|email|in)\b/i)[0]?.trim() || "";
+    const [firstName = "", ...lastParts] = nameChunk.split(/\s+/).filter(Boolean);
+    const lastName = lastParts.join(" ") || undefined;
+    const gender = this.parseGenderHint(normalized);
+    const lookingForMatch = normalized.match(/\blooking\s+for\s+(male|female|man|woman|boy|girl)\b/);
+    let lookingFor = this.parseGenderHint(lookingForMatch?.[0] ?? "");
+    if (!lookingFor && gender) {
+      lookingFor = gender === "FEMALE" ? "MALE" : "FEMALE";
+    }
+    const email = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
+    const phone = raw.match(/(?:\+?\d[\d\s()-]{6,}\d)/)?.[0]?.trim();
+    const country = raw.match(/\b(?:in|from)\s+([A-Za-z]{2,3})\b/i)?.[1]?.toUpperCase();
+
+    return {
+      firstName,
+      lastName,
+      gender,
+      lookingFor,
+      memberEmail: email,
+      memberPhone: phone,
+      currentCountryCode: country,
+    };
+  }
+
+  private parseCreditsAmount(raw: string) {
+    const amount = raw.match(/\b(\d{1,5})\b/);
+    return amount ? Number(amount[1]) : null;
   }
 
   private async findMemberCandidates(
@@ -1019,11 +1066,193 @@ export class AssistantService {
     return null;
   }
 
+  private async planGhotokAction(
+    actor: AuthActor,
+    query: string,
+    normalized: string,
+  ): Promise<AssistantAnswer | null> {
+    if (this.matches(normalized, ["stop impersonation", "end impersonation", "close impersonation"])) {
+      const active = await this.ghotokService.getActiveImpersonation(actor.userId);
+      if (!active) {
+        return {
+          answer: "You do not have an active impersonation session right now.",
+          bullets: [],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
+      const targetLabel = `${active.memberProfile?.displayName || active.memberProfile?.firstName || "that member"} (${active.memberProfile?.displayId || ""})`.trim();
+      return {
+        answer: `I can end your impersonation session for ${targetLabel}.`,
+        bullets: [],
+        suggestions: ["Confirm end impersonation", "How many members am I managing?"],
+        scope: "ghotok_action",
+        confirmation: {
+          type: "end_ghotok_impersonation",
+          payload: {
+            sessionId: active.id,
+            targetLabel,
+          },
+          label: "End impersonation",
+          prompt: `End the active impersonation session for ${targetLabel}?`,
+        },
+      };
+    }
+
+    if (this.matches(normalized, ["start impersonation", "impersonate ", "log in as member", "act as member"])) {
+      const target = this.sanitizeName(query);
+      const managedMembers = await this.ghotokService.listManagedMembers(actor.userId);
+      const candidates = managedMembers.filter((member) => {
+        const label = [member.displayName, member.firstName, member.lastName, member.displayId].filter(Boolean).join(" ").toLowerCase();
+        return !target || label.includes(target.toLowerCase());
+      });
+      if (!candidates.length) {
+        return {
+          answer: target
+            ? `I could not find a managed member matching "${target}".`
+            : "You do not have any managed members available for impersonation.",
+          bullets: [],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
+      if (candidates.length > 1) {
+        return {
+          answer: `I found multiple managed members matching "${target}".`,
+          bullets: candidates.map((member) => `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`),
+          suggestions: ["Pick one of the matches below."],
+          scope: "ghotok_action",
+          confirmation: null,
+          choices: candidates.slice(0, 5).map((member) => ({
+            label: `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`,
+            confirmation: {
+              type: "start_ghotok_impersonation",
+              payload: {
+                memberProfileId: member.id,
+                targetLabel: `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`,
+              },
+              label: "Start impersonation",
+              prompt: `Start impersonation for ${member.displayName || member.firstName}?`,
+            },
+          })),
+        };
+      }
+      const member = candidates[0];
+      return {
+        answer: `I found ${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId}).`,
+        bullets: ["I can start an impersonation session for this managed member."],
+        suggestions: ["Confirm start impersonation", "How many members am I managing?"],
+        scope: "ghotok_action",
+        confirmation: {
+          type: "start_ghotok_impersonation",
+          payload: {
+            memberProfileId: member.id,
+            targetLabel: `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`,
+          },
+          label: "Start impersonation",
+          prompt: `Start impersonation for ${member.displayName || member.firstName}?`,
+        },
+      };
+    }
+
+    if (this.matches(normalized, ["link member", "assign member", "manage member"])) {
+      const target = this.sanitizeName(query);
+      const candidates = (await this.ghotokService.searchAllMembers(actor.userId, target)).filter((member) => !member.managedByGhotokId);
+      if (!candidates.length) {
+        return {
+          answer: target
+            ? `I could not find an available member matching "${target}".`
+            : "I could not find any unassigned members to link.",
+          bullets: [],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
+      if (candidates.length > 1) {
+        return {
+          answer: `I found multiple linkable members matching "${target}".`,
+          bullets: candidates.map((member) => `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`),
+          suggestions: ["Pick one of the matches below."],
+          scope: "ghotok_action",
+          confirmation: null,
+          choices: candidates.slice(0, 5).map((member) => ({
+            label: `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`,
+            confirmation: {
+              type: "link_ghotok_member",
+              payload: {
+                memberProfileId: member.id,
+                targetLabel: `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`,
+              },
+              label: "Link member",
+              prompt: `Link ${member.displayName || member.firstName} to your managed member list?`,
+            },
+          })),
+        };
+      }
+      const member = candidates[0];
+      return {
+        answer: `I found ${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId}).`,
+        bullets: ["I can link this member to your managed member list."],
+        suggestions: ["Confirm link member", "How many members am I managing?"],
+        scope: "ghotok_action",
+        confirmation: {
+          type: "link_ghotok_member",
+          payload: {
+            memberProfileId: member.id,
+            targetLabel: `${member.displayName || [member.firstName, member.lastName].filter(Boolean).join(" ")} (${member.displayId})`,
+          },
+          label: "Link member",
+          prompt: `Link ${member.displayName || member.firstName} to your managed member list?`,
+        },
+      };
+    }
+
+    if (this.matches(normalized, ["create managed member", "add managed member", "new managed member"])) {
+      const draft = this.parseManagedMemberDraft(query);
+      if (!draft.firstName || !draft.gender || !draft.lookingFor) {
+        return {
+          answer: "I need at least a first name, gender, and looking-for gender to create a managed member.",
+          bullets: ["Try: create managed member Nabila Islam, female looking for male."],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
+      const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(" ");
+      return {
+        answer: `I can create a managed member named ${fullName}.`,
+        bullets: [
+          `Gender: ${draft.gender.toLowerCase()}.`,
+          `Looking for: ${draft.lookingFor.toLowerCase()}.`,
+          draft.memberEmail ? `Email: ${draft.memberEmail}.` : "Email was not provided.",
+        ],
+        suggestions: ["Confirm create managed member", "How many members am I managing?"],
+        scope: "ghotok_action",
+        confirmation: {
+          type: "create_ghotok_managed_member",
+          payload: draft as unknown as Record<string, unknown>,
+          label: "Create managed member",
+          prompt: `Create managed member ${fullName}?`,
+        },
+      };
+    }
+
+    return null;
+  }
+
   private async planAdminAction(
     actor: AuthActor,
     query: string,
     normalized: string,
   ): Promise<AssistantAnswer | null> {
+    if (actor.roles.includes(RoleKey.SUPER_ADMIN)) {
+      const superAdminAction = await this.planSuperAdminAction(actor, query, normalized);
+      if (superAdminAction) return superAdminAction;
+    }
+
     if (this.matches(normalized, ["approve profile", "reject profile"])) {
       const action = normalized.includes("reject") ? "reject_profile" : "approve_profile";
       const target = this.sanitizeName(query);
@@ -1223,6 +1452,167 @@ export class AssistantService {
     return null;
   }
 
+  private async planSuperAdminAction(
+    actor: AuthActor,
+    query: string,
+    normalized: string,
+  ): Promise<AssistantAnswer | null> {
+    if (this.matches(normalized, ["approve ghotok", "reject ghotok", "suspend ghotok", "activate ghotok", "add credits to ghotok", "add ghotok credits"])) {
+      const target = this.sanitizeName(query);
+      const ghotoks = (await this.superAdminService.listGhotoks("ALL")).filter((ghotok) => {
+        if (!target) return true;
+        const label = [ghotok.displayName, ghotok.email, ghotok.phone].filter(Boolean).join(" ").toLowerCase();
+        return label.includes(target.toLowerCase());
+      });
+      if (!ghotoks.length) {
+        return {
+          answer: target ? `I could not find a ghotok matching "${target}".` : "I could not find a matching ghotok.",
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+
+      const amount = this.parseCreditsAmount(query);
+      let actionType = "approve_ghotok";
+      let label = "Approve ghotok";
+      let promptBuilder = (name: string) => `Approve ${name}?`;
+      if (normalized.includes("reject")) {
+        actionType = "reject_ghotok";
+        label = "Reject ghotok";
+        promptBuilder = (name) => `Reject ${name}?`;
+      } else if (normalized.includes("suspend")) {
+        actionType = "set_ghotok_status";
+        label = "Suspend ghotok";
+        promptBuilder = (name) => `Suspend ${name}?`;
+      } else if (normalized.includes("activate")) {
+        actionType = "set_ghotok_status";
+        label = "Activate ghotok";
+        promptBuilder = (name) => `Set ${name} to active?`;
+      } else if (normalized.includes("credit")) {
+        if (!amount) {
+          return {
+            answer: "Tell me how many credits to add.",
+            bullets: ["Try: add 25 credits to ghotok Sharmeen."],
+            suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+            scope: "super_admin_action",
+            confirmation: null,
+          };
+        }
+        actionType = "add_ghotok_credits";
+        label = "Add ghotok credits";
+        promptBuilder = (name) => `Add ${amount} credits to ${name}?`;
+      }
+
+      const makeConfirmation = (ghotok: { id: string; displayName: string }) => ({
+        type: actionType,
+        payload: {
+          ghotokId: ghotok.id,
+          targetLabel: ghotok.displayName,
+          ...(actionType === "set_ghotok_status" ? { status: normalized.includes("suspend") ? "SUSPENDED" : "ACTIVE" } : {}),
+          ...(actionType === "add_ghotok_credits" ? { amount } : {}),
+        },
+        label,
+        prompt: promptBuilder(ghotok.displayName),
+      });
+
+      if (ghotoks.length > 1) {
+        return {
+          answer: `I found multiple ghotoks matching "${target}".`,
+          bullets: ghotoks.slice(0, 5).map((ghotok) => `${ghotok.displayName} - ${ghotok.status.toLowerCase()} - ${ghotok.creditBalance} credits`),
+          suggestions: ["Pick one of the matches below."],
+          scope: "super_admin_action",
+          confirmation: null,
+          choices: ghotoks.slice(0, 5).map((ghotok) => ({
+            label: ghotok.displayName,
+            confirmation: makeConfirmation(ghotok),
+          })),
+        };
+      }
+
+      const ghotok = ghotoks[0];
+      return {
+        answer: `I found ${ghotok.displayName}.`,
+        bullets: [`Current status: ${ghotok.status.toLowerCase()}.`, `Credit balance: ${ghotok.creditBalance}.`],
+        suggestions: ["Confirm super admin action", "What needs my attention today?"],
+        scope: "super_admin_action",
+        confirmation: makeConfirmation(ghotok),
+      };
+    }
+
+    if (this.matches(normalized, ["approve vendor", "reject vendor", "activate vendor", "deactivate vendor", "set vendor status"])) {
+      const target = this.sanitizeName(query);
+      const vendors = (await this.superAdminService.listVendors("ALL")).filter((vendor) => {
+        if (!target) return true;
+        const label = [vendor.businessName, vendor.categoryName, vendor.user?.email].filter(Boolean).join(" ").toLowerCase();
+        return label.includes(target.toLowerCase());
+      });
+      if (!vendors.length) {
+        return {
+          answer: target ? `I could not find a vendor matching "${target}".` : "I could not find a matching vendor.",
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+
+      let actionType = "approve_vendor";
+      let label = "Approve vendor";
+      let promptBuilder = (name: string) => `Approve ${name}?`;
+      if (normalized.includes("reject")) {
+        actionType = "reject_vendor";
+        label = "Reject vendor";
+        promptBuilder = (name) => `Reject ${name}?`;
+      } else if (normalized.includes("deactivate")) {
+        actionType = "set_vendor_status";
+        label = "Deactivate vendor";
+        promptBuilder = (name) => `Set ${name} to inactive?`;
+      } else if (normalized.includes("activate") || normalized.includes("set vendor status")) {
+        actionType = "set_vendor_status";
+        label = "Activate vendor";
+        promptBuilder = (name) => `Set ${name} to active?`;
+      }
+
+      const makeConfirmation = (vendor: { id: string; businessName: string }) => ({
+        type: actionType,
+        payload: {
+          vendorId: vendor.id,
+          targetLabel: vendor.businessName,
+          ...(actionType === "set_vendor_status" ? { status: normalized.includes("deactivate") ? "INACTIVE" : "ACTIVE" } : {}),
+        },
+        label,
+        prompt: promptBuilder(vendor.businessName),
+      });
+
+      if (vendors.length > 1) {
+        return {
+          answer: `I found multiple vendors matching "${target}".`,
+          bullets: vendors.slice(0, 5).map((vendor) => `${vendor.businessName} - ${vendor.status.toLowerCase()} - ${vendor._count.leads} leads`),
+          suggestions: ["Pick one of the matches below."],
+          scope: "super_admin_action",
+          confirmation: null,
+          choices: vendors.slice(0, 5).map((vendor) => ({
+            label: vendor.businessName,
+            confirmation: makeConfirmation(vendor),
+          })),
+        };
+      }
+
+      const vendor = vendors[0];
+      return {
+        answer: `I found ${vendor.businessName}.`,
+        bullets: [`Current status: ${vendor.status.toLowerCase()}.`, `Lead count: ${vendor._count.leads}.`],
+        suggestions: ["Confirm super admin action", "What needs my attention today?"],
+        scope: "super_admin_action",
+        confirmation: makeConfirmation(vendor),
+      };
+    }
+
+    return null;
+  }
+
   private async executeConfirmedAction(
     actor: AuthActor,
     type: string,
@@ -1393,6 +1783,81 @@ export class AssistantService {
           confirmation: null,
         };
       }
+      case "create_ghotok_managed_member": {
+        if (!actor.roles.includes(RoleKey.GHOTOK)) break;
+        const created = await this.ghotokService.createManagedMember(actor.userId, {
+          firstName: String(payload.firstName || "").trim(),
+          lastName: payload.lastName ? String(payload.lastName).trim() : undefined,
+          gender: payload.gender as any,
+          lookingFor: payload.lookingFor as any,
+          memberEmail: payload.memberEmail ? String(payload.memberEmail).trim() : undefined,
+          memberPhone: payload.memberPhone ? String(payload.memberPhone).trim() : undefined,
+          currentCountryCode: payload.currentCountryCode ? String(payload.currentCountryCode).trim() : undefined,
+        });
+        if (!created) {
+          throw new Error("Managed member creation did not return a profile.");
+        }
+        await this.logAssistantAction(actor, "assistant.create_ghotok_managed_member", "MEMBER_PROFILE", created.id, {
+          query,
+          displayName: created.displayName,
+        });
+        return {
+          answer: `Done. I created managed member ${created.displayName || created.firstName}.`,
+          bullets: [`Display ID: ${created.displayId}.`],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
+      case "link_ghotok_member": {
+        if (!actor.roles.includes(RoleKey.GHOTOK)) break;
+        await this.ghotokService.linkExistingMember(actor.userId, String(payload.memberProfileId || ""));
+        await this.logAssistantAction(actor, "assistant.link_ghotok_member", "MEMBER_PROFILE", String(payload.memberProfileId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+        });
+        return {
+          answer: `Done. I linked ${String(payload.targetLabel || "that member")} to your managed list.`,
+          bullets: [],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
+      case "start_ghotok_impersonation": {
+        if (!actor.roles.includes(RoleKey.GHOTOK)) break;
+        await this.ghotokService.startImpersonation(actor.userId, String(payload.memberProfileId || ""), {
+          reason: "Started via assistant.",
+        });
+        await this.logAssistantAction(actor, "assistant.start_ghotok_impersonation", "MEMBER_PROFILE", String(payload.memberProfileId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+        });
+        return {
+          answer: `Done. I started impersonation for ${String(payload.targetLabel || "that member")}.`,
+          bullets: ["You can now continue member actions in the managed member context."],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
+      case "end_ghotok_impersonation": {
+        if (!actor.roles.includes(RoleKey.GHOTOK)) break;
+        await this.ghotokService.endImpersonation(actor.userId, String(payload.sessionId || ""), {
+          reason: "Ended via assistant.",
+        });
+        await this.logAssistantAction(actor, "assistant.end_ghotok_impersonation", "GHOTOK_IMPERSONATION_SESSION", String(payload.sessionId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+        });
+        return {
+          answer: `Done. I ended the impersonation session for ${String(payload.targetLabel || "that member")}.`,
+          bullets: [],
+          suggestions: ["How many members am I managing?", "What is my wallet balance?"],
+          scope: "ghotok_action",
+          confirmation: null,
+        };
+      }
       case "create_wedding_project": {
         if (!actor.roles.includes(RoleKey.MEMBER)) break;
         await this.weddingService.createProject(actor.userId, {
@@ -1411,6 +1876,115 @@ export class AssistantService {
           bullets: [],
           suggestions: ["Summarize my wedding plan.", "What needs my attention today?"],
           scope: "wedding_action",
+          confirmation: null,
+        };
+      }
+      case "approve_ghotok": {
+        if (!actor.roles.includes(RoleKey.SUPER_ADMIN)) break;
+        await this.superAdminService.approveGhotok(actor.userId, String(payload.ghotokId || ""), "Approved via assistant.");
+        await this.logAssistantAction(actor, "assistant.approve_ghotok", "GHOTOK_PROFILE", String(payload.ghotokId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+        });
+        return {
+          answer: `Done. I approved ${String(payload.targetLabel || "that ghotok")}.`,
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+      case "reject_ghotok": {
+        if (!actor.roles.includes(RoleKey.SUPER_ADMIN)) break;
+        await this.superAdminService.rejectGhotok(actor.userId, String(payload.ghotokId || ""), "Rejected via assistant.");
+        await this.logAssistantAction(actor, "assistant.reject_ghotok", "GHOTOK_PROFILE", String(payload.ghotokId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+        });
+        return {
+          answer: `Done. I rejected ${String(payload.targetLabel || "that ghotok")}.`,
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+      case "set_ghotok_status": {
+        if (!actor.roles.includes(RoleKey.SUPER_ADMIN)) break;
+        await this.superAdminService.setGhotokStatus(actor.userId, String(payload.ghotokId || ""), payload.status as GhotokStatus, "Updated via assistant.");
+        await this.logAssistantAction(actor, "assistant.set_ghotok_status", "GHOTOK_PROFILE", String(payload.ghotokId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+          status: String(payload.status || ""),
+        });
+        return {
+          answer: `Done. I updated ${String(payload.targetLabel || "that ghotok")} to ${String(payload.status || "").toLowerCase()}.`,
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+      case "add_ghotok_credits": {
+        if (!actor.roles.includes(RoleKey.SUPER_ADMIN)) break;
+        const result = await this.superAdminService.addGhotokCredits(actor.userId, String(payload.ghotokId || ""), Number(payload.amount || 0), "Added via assistant.");
+        await this.logAssistantAction(actor, "assistant.add_ghotok_credits", "GHOTOK_PROFILE", String(payload.ghotokId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+          amount: Number(payload.amount || 0),
+          newBalance: result.newBalance,
+        });
+        return {
+          answer: `Done. I added ${Number(payload.amount || 0)} credits to ${String(payload.targetLabel || "that ghotok")}.`,
+          bullets: [`New balance: ${result.newBalance}.`],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+      case "approve_vendor": {
+        if (!actor.roles.includes(RoleKey.SUPER_ADMIN)) break;
+        await this.superAdminService.approveVendor(actor.userId, String(payload.vendorId || ""), "Approved via assistant.");
+        await this.logAssistantAction(actor, "assistant.approve_vendor", "VENDOR_PROFILE", String(payload.vendorId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+        });
+        return {
+          answer: `Done. I approved ${String(payload.targetLabel || "that vendor")}.`,
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+      case "reject_vendor": {
+        if (!actor.roles.includes(RoleKey.SUPER_ADMIN)) break;
+        await this.superAdminService.rejectVendor(actor.userId, String(payload.vendorId || ""), "Rejected via assistant.");
+        await this.logAssistantAction(actor, "assistant.reject_vendor", "VENDOR_PROFILE", String(payload.vendorId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+        });
+        return {
+          answer: `Done. I rejected ${String(payload.targetLabel || "that vendor")}.`,
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
+          confirmation: null,
+        };
+      }
+      case "set_vendor_status": {
+        if (!actor.roles.includes(RoleKey.SUPER_ADMIN)) break;
+        await this.superAdminService.setVendorStatus(actor.userId, String(payload.vendorId || ""), payload.status as VendorStatus, "Updated via assistant.");
+        await this.logAssistantAction(actor, "assistant.set_vendor_status", "VENDOR_PROFILE", String(payload.vendorId || ""), {
+          query,
+          targetLabel: String(payload.targetLabel || ""),
+          status: String(payload.status || ""),
+        });
+        return {
+          answer: `Done. I updated ${String(payload.targetLabel || "that vendor")} to ${String(payload.status || "").toLowerCase()}.`,
+          bullets: [],
+          suggestions: ["What needs my attention today?", "How many profiles are pending review?"],
+          scope: "super_admin_action",
           confirmation: null,
         };
       }
@@ -2118,7 +2692,11 @@ export class AssistantService {
 
     const answer = this.matches(normalized, ["payment"])
       ? `There are ${pendingManualPayments} manual payment${pendingManualPayments === 1 ? "" : "s"} waiting for review.`
-      : `There are ${pendingProfiles} member profile${pendingProfiles === 1 ? "" : "s"} waiting for moderation right now.`;
+      : this.matches(normalized, ["ghotok"])
+        ? `There are ${pendingGhotoks} ghotok${pendingGhotoks === 1 ? "" : "s"} waiting for review right now.`
+        : this.matches(normalized, ["vendor"])
+          ? `There are ${pendingVendors} vendor${pendingVendors === 1 ? "" : "s"} waiting for review right now.`
+          : `There are ${pendingProfiles} member profile${pendingProfiles === 1 ? "" : "s"} waiting for moderation right now.`;
 
     return {
       answer,
@@ -2127,7 +2705,7 @@ export class AssistantService {
         `${activeProfiles} member profile${activeProfiles === 1 ? "" : "s"} are active.`,
         `${pendingGhotoks} ghotok${pendingGhotoks === 1 ? "" : "s"} and ${pendingVendors} vendor${pendingVendors === 1 ? "" : "s"} are pending review.`,
       ],
-      suggestions: ["What needs my attention today?", "How many manual payments need review?", "How many profiles are pending review?"],
+      suggestions: ["What needs my attention today?", "How many manual payments need review?", "How many profiles are pending review?", "How many ghotoks are pending review?"],
       scope: "admin",
       confirmation: null,
     };

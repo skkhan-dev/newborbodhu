@@ -51,7 +51,7 @@ export default async function LocalizedMatrimonyMarketPage({
           <p className="hero-copy">{content.lead}</p>
           <div className="hero-actions">
             <Link href={localizePath("/signup", locale)} className="button button-primary">
-              {localeText(locale, "Join Borbodhu", "বরবধূতে যোগ দিন")}
+              {localeText(locale, "Join Free", "বরবধূতে যোগ দিন")}
             </Link>
             <Link href={localizePath("/profiles", locale)} className="button button-soft">
               {localeText(locale, "Browse profiles", "প্রোফাইল দেখুন")}

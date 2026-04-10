@@ -97,7 +97,7 @@ export default async function PublicGhotoksPage() {
                     View public page
                   </Link>
                   <Link href="/signup" className="button button-soft">
-                    Join Borbodhu
+                    Join Free
                   </Link>
                 </div>
               </div>

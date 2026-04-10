@@ -68,7 +68,7 @@ export default function ProfileActionButtons({ displayId }: { displayId: string 
   return (
     <div className="hero-actions">
       <Link href="/signup" className="button button-primary">
-        Join to express interest
+        Join Free
       </Link>
       <Link href="/login" className="button button-soft">
         Log in

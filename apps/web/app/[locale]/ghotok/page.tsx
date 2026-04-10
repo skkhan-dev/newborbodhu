@@ -130,7 +130,7 @@ export default async function LocalizedPublicGhotoksPage({
                     {localeText(locale, "View public page", "পাবলিক পেজ দেখুন")}
                   </Link>
                   <Link href={localizePath("/signup", locale)} className="button button-soft">
-                    {localeText(locale, "Join Borbodhu", "বরবধূতে যোগ দিন")}
+                    {localeText(locale, "Join Free", "বরবধূতে যোগ দিন")}
                   </Link>
                 </div>
               </div>

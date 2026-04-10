@@ -71,7 +71,7 @@ export async function PublicProfilesShell({
                 {localeText(locale, "Log in for full search", "পূর্ণ সার্চের জন্য লগ ইন")}
               </Link>
               <Link href={localizePath("/signup", locale)} className="button button-soft">
-                {localeText(locale, "Register free", "ফ্রি রেজিস্টার করুন")}
+                {localeText(locale, "Join Free", "ফ্রি রেজিস্টার করুন")}
               </Link>
             </div>
           </div>

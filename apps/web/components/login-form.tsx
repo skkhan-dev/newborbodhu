@@ -50,7 +50,7 @@ const defaultCopy: LoginFormCopy = {
   passwordLabel: "Password",
   submitLabel: "Log In",
   submittingLabel: "Signing in...",
-  memberSignupLabel: "Create free account",
+  memberSignupLabel: "Join Free",
   vendorSignupLabel: "Register your business",
   quickAccountsKicker: "New to Borbodhu?",
   quickAccountsTitle: "Join thousands of families finding their match.",

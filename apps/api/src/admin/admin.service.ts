@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   ApprovalStatus,
+  GhotokStatus,
   MediaPrivacyMode,
   PaymentStatus,
   Prisma,
   ProfileStatus,
   UserStatus,
+  VendorStatus,
 } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -34,10 +36,10 @@ export class AdminService {
           where: { status: { in: [PaymentStatus.PAID, PaymentStatus.MANUAL_APPROVED] } },
           _sum: { finalAmount: true },
         }),
-        this.prisma.ghotokProfile.count({ where: { status: "ACTIVE" as any } }),
-        this.prisma.ghotokProfile.count({ where: { status: "PENDING_REVIEW" as any } }),
-        this.prisma.vendorProfile.count({ where: { status: "ACTIVE" as any } }),
-        this.prisma.vendorProfile.count({ where: { status: "PENDING_REVIEW" as any } }),
+        this.prisma.ghotokProfile.count({ where: { status: GhotokStatus.ACTIVE } }),
+        this.prisma.ghotokProfile.count({ where: { status: GhotokStatus.PENDING_REVIEW } }),
+        this.prisma.vendorProfile.count({ where: { status: VendorStatus.ACTIVE } }),
+        this.prisma.vendorProfile.count({ where: { status: VendorStatus.PENDING_REVIEW } }),
       ]);
 
     return {

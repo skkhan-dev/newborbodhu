@@ -68,7 +68,7 @@ export default async function MatrimonyMarketPage({
           <p className="hero-copy">{content.lead}</p>
           <div className="hero-actions">
             <Link href="/signup" className="button button-primary">
-              Join Borbodhu
+              Join Free
             </Link>
             <Link href="/profiles" className="button button-soft">
               Browse profiles

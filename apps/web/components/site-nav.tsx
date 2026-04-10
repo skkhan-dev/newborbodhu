@@ -173,6 +173,12 @@ export function SiteNav() {
                       {navCopy.labels.profiles}
                     </Link>
                     <Link
+                      href={localizePath("/ghotok", locale)}
+                      className={`nav-link${isActive(localizePath("/ghotok", locale)) ? " nav-link-active" : ""}`}
+                    >
+                      {navCopy.labels.ghotok}
+                    </Link>
+                    <Link
                       href={localizePath("/how-it-works", locale)}
                       className={`nav-link${isActive(localizePath("/how-it-works", locale)) ? " nav-link-active" : ""}`}
                     >
@@ -423,6 +429,12 @@ export function SiteNav() {
                 className={`nav-link${isActive(localizePath("/profiles", locale)) ? " nav-link-active" : ""}`}
               >
                 {navCopy.labels.profiles}
+              </Link>
+              <Link
+                href={localizePath("/ghotok", locale)}
+                className={`nav-link${isActive(localizePath("/ghotok", locale)) ? " nav-link-active" : ""}`}
+              >
+                {navCopy.labels.ghotok}
               </Link>
               <Link
                 href={localizePath("/how-it-works", locale)}

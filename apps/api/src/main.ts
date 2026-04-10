@@ -1,5 +1,10 @@
 import "reflect-metadata";
 
+// BigInt fields (e.g. legacyId) must serialize to strings, not throw.
+(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+  return this.toString();
+};
+
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 

@@ -217,7 +217,7 @@ export default function AboutPage() {
               icon: "👤",
               title: "Members",
               body: "Individuals and families looking for a life partner. Create a free profile, browse, and connect.",
-              cta: "Register free",
+              cta: "Join Free",
               href: "/signup",
             },
             {
@@ -296,7 +296,7 @@ export default function AboutPage() {
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link href="/signup" className="button button-primary">
-              Create free account
+              Join Free
             </Link>
             <Link href="/contact" className="button button-soft">
               Contact us

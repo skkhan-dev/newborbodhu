@@ -10,5 +10,6 @@ import { SuperAdminService } from "./super-admin.service";
   imports: [PrismaModule, AuthModule, NotificationsModule],
   controllers: [SuperAdminController],
   providers: [SuperAdminService],
+  exports: [SuperAdminService],
 })
 export class SuperAdminModule {}

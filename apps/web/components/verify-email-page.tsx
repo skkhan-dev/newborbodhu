@@ -33,24 +33,24 @@ export function VerifyEmailPage() {
   }, [token]);
 
   return (
-    <div className="page-shell">
-      <div className="hero-card" style={{ maxWidth: 480 }}>
+    <div className="page-shell" style={{ display: "flex", justifyContent: "center", paddingTop: 60 }}>
+      <div className="auth-card" style={{ maxWidth: 480, width: "100%" }}>
         {state === "loading" && (
           <>
             <p className="section-kicker">Verifying</p>
             <h2>Confirming your email…</h2>
-            <p className="hint">Please wait a moment.</p>
+            <p style={{ color: "var(--muted)", marginTop: 8 }}>Please wait a moment.</p>
           </>
         )}
 
         {state === "success" && (
           <>
-            <p className="section-kicker" style={{ color: "var(--leaf)" }}>Verified!</p>
+            <p className="section-kicker" style={{ color: "#2d7a50" }}>✓ Verified!</p>
             <h2>Email confirmed.</h2>
-            <p className="hint">
+            <p style={{ color: "var(--muted)", marginTop: 8, marginBottom: 20 }}>
               Your email address has been verified. Redirecting you to your dashboard…
             </p>
-            <Link href="/dashboard" className="button button-primary" style={{ marginTop: 16, display: "inline-block" }}>
+            <Link href="/dashboard" className="button button-primary" style={{ display: "inline-flex" }}>
               Go to Dashboard
             </Link>
           </>
@@ -58,14 +58,21 @@ export function VerifyEmailPage() {
 
         {state === "error" && (
           <>
-            <p className="section-kicker" style={{ color: "var(--rose)" }}>Link expired</p>
-            <h2>This verification link is not valid.</h2>
-            <p className="hint" style={{ marginBottom: 16 }}>
-              {errorMsg ?? "The link may have expired or already been used. Request a new one from your dashboard."}
+            <p className="section-kicker" style={{ color: "var(--rose)" }}>Link not valid</p>
+            <h2>Verification failed.</h2>
+            <p style={{ color: "var(--muted)", marginTop: 8, marginBottom: 20 }}>
+              {errorMsg && errorMsg !== "Verification failed."
+                ? errorMsg
+                : "This link may have expired (links are valid for 72 hours) or has already been used. Request a new verification email from your dashboard."}
             </p>
-            <Link href="/dashboard" className="button button-primary">
-              Go to Dashboard
-            </Link>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Link href="/dashboard" className="button button-primary">
+                Go to Dashboard
+              </Link>
+              <Link href="/login" className="button button-soft">
+                Sign in
+              </Link>
+            </div>
           </>
         )}
 
@@ -73,12 +80,17 @@ export function VerifyEmailPage() {
           <>
             <p className="section-kicker" style={{ color: "var(--rose)" }}>Invalid link</p>
             <h2>No verification token found.</h2>
-            <p className="hint" style={{ marginBottom: 16 }}>
+            <p style={{ color: "var(--muted)", marginTop: 8, marginBottom: 20 }}>
               This link is missing a token. Please use the link from your verification email, or request a new one from your dashboard.
             </p>
-            <Link href="/dashboard" className="button button-primary">
-              Go to Dashboard
-            </Link>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Link href="/dashboard" className="button button-primary">
+                Go to Dashboard
+              </Link>
+              <Link href="/login" className="button button-soft">
+                Sign in
+              </Link>
+            </div>
           </>
         )}
       </div>

@@ -56,7 +56,7 @@ const defaultCopy: MemberSignupCopy = {
   birthDate: "Date of birth",
   currentCountry: "Current country",
   homeCountry: "Home country (origin)",
-  submitLabel: "Create free account",
+  submitLabel: "Join Free",
   submittingLabel: "Creating your account…",
 };
 

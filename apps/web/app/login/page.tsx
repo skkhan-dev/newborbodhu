@@ -20,7 +20,7 @@ export default function LoginPage() {
           passwordLabel: "Password",
           submitLabel: "Log In",
           submittingLabel: "Signing in...",
-          memberSignupLabel: "Create member account",
+          memberSignupLabel: "Join Free",
           vendorSignupLabel: "",
           quickAccountsKicker: "New to Borbodhu?",
           quickAccountsTitle: "Join thousands of families finding their match.",

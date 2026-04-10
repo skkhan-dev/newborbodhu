@@ -69,7 +69,7 @@ const defaultCopy: VendorSignupCopy = {
   descriptionBn: "Description (Bangla)",
   submitLabel: "Create vendor account",
   submittingLabel: "Creating vendor...",
-  memberButton: "Member signup",
+  memberButton: "Join Free",
   sideKicker: "Why vendors matter",
   sideTitle: "Wedding planning becomes a stronger business when vendors can self-serve.",
   sidePoints: [

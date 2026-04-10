@@ -10,5 +10,6 @@ import { PublicGhotokController } from "./public-ghotok.controller";
   imports: [PrismaModule, AuthModule],
   controllers: [GhotokController, PublicGhotokController],
   providers: [GhotokService],
+  exports: [GhotokService],
 })
 export class GhotokModule {}
