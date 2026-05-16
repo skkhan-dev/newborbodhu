@@ -52,7 +52,7 @@ export function PublicSearchForm({ defaults, basePath }: SearchFormProps) {
   const [marital, setMarital] = useState<string[]>(defaults.maritalStatus ? defaults.maritalStatus.split(",") : []);
   const [tongues, setTongues] = useState<string[]>(defaults.motherTongue ? defaults.motherTongue.split(",") : []);
   const [keyword, setKeyword] = useState(defaults.keyword || "");
-  const [sortBy, setSortBy] = useState(defaults.sortBy || "most_active");
+  const [sortBy, setSortBy] = useState(defaults.sortBy || "recent_login");
   const [hasPhoto, setHasPhoto] = useState(defaults.hasPhoto || false);
   const [education, setEducation] = useState<string[]>(defaults.educationLevel ? defaults.educationLevel.split(",") : []);
   const [profession, setProfession] = useState<string[]>(defaults.profession ? defaults.profession.split(",") : []);
@@ -87,7 +87,7 @@ export function PublicSearchForm({ defaults, basePath }: SearchFormProps) {
     setMarital([]);
     setTongues([]);
     setKeyword("");
-    setSortBy("most_active");
+    setSortBy("recent_login");
     setHasPhoto(false);
     setEducation([]);
     setProfession([]);

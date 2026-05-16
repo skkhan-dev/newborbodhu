@@ -163,6 +163,7 @@ export class MemberProfilesService {
   async listPublicProfiles(query: PublicProfileDirectoryQueryDto) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 12;
+    const includeTotal = query.includeTotal !== false;
     const where = this.buildProfileSearchWhere(query, {
       publicOnly: true,
     });
@@ -189,11 +190,11 @@ export class MemberProfilesService {
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      this.prisma.memberProfile.count({ where }),
+      includeTotal ? this.prisma.memberProfile.count({ where }) : Promise.resolve(null),
     ]);
 
     return {
-      total,
+      total: total ?? 0,
       page,
       pageSize,
       results: await Promise.all(

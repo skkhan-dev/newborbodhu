@@ -91,7 +91,7 @@ export function normalizePublicProfileSearchParams(
     searchParams.sortBy === "most_active" ||
     searchParams.sortBy === "recent_login"
       ? searchParams.sortBy
-      : "most_active";
+      : "recent_login";
   const pageValue = Number(searchParams.page ?? "1");
 
   return {
@@ -174,6 +174,10 @@ export function buildPublicProfileSearchHref(
 export async function getPublicProfiles(
   searchParams: NormalizedPublicProfileSearchParams,
   pageSize = 12,
+  options?: {
+    includeTotal?: boolean;
+    revalidateSeconds?: number;
+  },
 ) {
   const params = new URLSearchParams();
 
@@ -228,9 +232,14 @@ export async function getPublicProfiles(
     params.set("page", String(searchParams.page));
   }
   params.set("pageSize", String(pageSize));
+  if (options?.includeTotal === false) {
+    params.set("includeTotal", "false");
+  }
 
   const response = await fetch(`${getApiBaseUrl()}/public/profiles?${params.toString()}`, {
-    cache: "no-store",
+    next: {
+      revalidate: options?.revalidateSeconds ?? 60,
+    },
   });
 
   if (!response.ok) {

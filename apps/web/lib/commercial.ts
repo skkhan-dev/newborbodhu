@@ -100,7 +100,9 @@ export function getDefaultPublicCommercialConfig(): PublicCommercialConfig {
 export async function getPublicCommercialConfig() {
   try {
     const response = await fetch(`${getApiBaseUrl()}/meta/public-config`, {
-      cache: "no-store",
+      next: {
+        revalidate: 300,
+      },
     });
 
     if (!response.ok) {

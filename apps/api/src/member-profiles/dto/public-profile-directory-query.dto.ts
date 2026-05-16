@@ -65,6 +65,11 @@ export class PublicProfileDirectoryQueryDto {
   hasPhoto?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value !== false && value !== "false" && value !== "0")
+  includeTotal = true;
+
+  @IsOptional()
   @IsIn(["new_signups", "recent_login", "most_active"])
   sortBy: "new_signups" | "recent_login" | "most_active" = "recent_login";
 

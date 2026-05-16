@@ -27,11 +27,11 @@ export async function PublicHomeShell({ locale }: PublicHomeShellProps) {
 
   const [publicConfig, totalCount, recentWomen, recentMen, newProfiles, activeProfiles] = await Promise.all([
     safe(getPublicCommercialConfig(), null),
-    safe(getPublicProfiles({} as any, 1), emptyProfiles),
-    safe(getPublicProfiles({ ...defaultSearch, gender: "WOMAN" as any, hasPhoto: true } as any, 4), emptyProfiles),
-    safe(getPublicProfiles({ ...defaultSearch, gender: "MAN" as any, hasPhoto: true } as any, 2), emptyProfiles),
-    safe(getPublicProfiles({ ...defaultSearch, sortBy: "new_signups", hasPhoto: true } as any, 6), emptyProfiles),
-    safe(getPublicProfiles({ ...defaultSearch, sortBy: "most_active", hasPhoto: true } as any, 6), emptyProfiles),
+    safe(getPublicProfiles(defaultSearch, 1, { includeTotal: true, revalidateSeconds: 300 }), emptyProfiles),
+    safe(getPublicProfiles({ ...defaultSearch, gender: "WOMAN", hasPhoto: true }, 4, { includeTotal: false, revalidateSeconds: 300 }), emptyProfiles),
+    safe(getPublicProfiles({ ...defaultSearch, gender: "MAN", hasPhoto: true }, 2, { includeTotal: false, revalidateSeconds: 300 }), emptyProfiles),
+    safe(getPublicProfiles({ ...defaultSearch, sortBy: "new_signups", hasPhoto: true }, 6, { includeTotal: false, revalidateSeconds: 300 }), emptyProfiles),
+    safe(getPublicProfiles({ ...defaultSearch, sortBy: "most_active", hasPhoto: true }, 6, { includeTotal: false, revalidateSeconds: 300 }), emptyProfiles),
   ]);
   // Interleave genders for diversity (women first, then men)
   const recentProfiles = {
@@ -114,7 +114,7 @@ export async function PublicHomeShell({ locale }: PublicHomeShellProps) {
             </div>
 
             <PublicSearchForm
-              defaults={{ memberGender: "MAN", gender: "WOMAN", ageMin: "18", ageMax: "28", religion: "Muslim", currentCountryCode: "BD", sortBy: "most_active" }}
+              defaults={{ memberGender: "MAN", gender: "WOMAN", ageMin: "18", ageMax: "28", religion: "Muslim", currentCountryCode: "BD", sortBy: "recent_login" }}
               basePath={localizePath("/profiles", locale)}
             />
           </aside>
