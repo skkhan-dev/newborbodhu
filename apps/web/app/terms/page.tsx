@@ -16,7 +16,7 @@ export default function TermsPage() {
           <h1>Terms of using borbodhu.com.</h1>
           <p className="hero-copy">
             Effective date: {EFFECTIVE_DATE}. By creating an account on borbodhu.com, you agree
-            to the following terms. Please read them carefully.
+            to the following terms with PropNivo, Inc., the operator of Borbodhu. Please read them carefully.
           </p>
         </div>
       </section>
@@ -77,7 +77,7 @@ export default function TermsPage() {
               body: [
                 "You retain ownership of the content you upload (photos, profile text).",
                 "By uploading content, you grant Borbodhu a non-exclusive licence to display it on the platform.",
-                "Borbodhu's brand, design, and code are proprietary and may not be copied or reproduced.",
+                "Borbodhu's brand, design, and code are proprietary to PropNivo, Inc. and may not be copied or reproduced.",
               ],
             },
             {
@@ -110,6 +110,7 @@ export default function TermsPage() {
               body: [
                 "For questions about these terms, email: support@borbodhu.com",
                 "Response time: within 48 hours.",
+                "Borbodhu is operated by PropNivo, Inc.",
               ],
             },
           ].map(({ title, body }) => (

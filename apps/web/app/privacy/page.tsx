@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           <h1>Your privacy is a core Borbodhu value.</h1>
           <p className="hero-copy">
             Effective date: {EFFECTIVE_DATE}. This policy explains how we collect, use, and
-            protect your personal information when you use borbodhu.com.
+            protect your personal information when you use borbodhu.com, operated by PropNivo, Inc.
           </p>
         </div>
       </section>
@@ -97,6 +97,7 @@ export default function PrivacyPage() {
                 "For privacy-related requests, email: support@borbodhu.com",
                 "Please include your registered email and the nature of your request.",
                 "We aim to respond to all privacy requests within 72 hours.",
+                "Borbodhu is operated by PropNivo, Inc.",
               ],
             },
           ].map(({ title, body }) => (
