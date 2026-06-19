@@ -162,7 +162,7 @@ export function SiteFooter() {
           }}
         >
           <p style={{ margin: 0 }}>
-            © {year} PropNivo, Inc. — All rights reserved
+            © {year} borbodhu.com — All rights reserved
           </p>
           <div style={{ display: "flex", gap: 16 }}>
             <Link href="/privacy" style={{ color: "rgba(255,255,255,0.5)", textDecoration: "none" }}>

@@ -94,7 +94,6 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "Borbodhu.com",
-              legalName: "PropNivo, Inc.",
               alternateName: "বরবধূ ডটকম",
               url: "https://borbodhu.com",
               logo: "https://borbodhu.com/icon.png",
